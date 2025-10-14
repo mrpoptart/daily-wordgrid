@@ -3,7 +3,7 @@
 A daily, deterministic, 5×5 word-finding game that blends the path-finding rules of Boggle with the daily cadence and shareability of Wordle.
 
 ## Goals
-- Deliver a fun, fair, daily puzzle playable in <3 minutes
+- Deliver a fun, fair, daily puzzle playable in < 3 minutes
 - Deterministic board per day to enable global competition
 - Simple onboarding via Supabase Auth
 - Low-latency serverless backend on Vercel
@@ -19,11 +19,11 @@ A daily, deterministic, 5×5 word-finding game that blends the path-finding rule
 ## Gameplay Rules (Boggle-like)
 - Letters must be contiguous; each next letter must be adjacent (including diagonals)
 - A tile may not be reused within the same word path
-- Minimum word length: typically 3 letters (configurable)
+- Minimum word length: 4 letters
 - Duplicate words per day do not score twice
-- Dictionary validation is enforced server-side (dictionary source TBD)
+- Dictionary validation is enforced server-side (SOWPODS dictionary)
 - Scoring (default):
-  - 3–4 letters: 1 point
+  - 4 letters: 1 point
   - 5 letters: 2 points
   - 6 letters: 3 points
   - 7 letters: 5 points
