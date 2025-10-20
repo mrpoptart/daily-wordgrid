@@ -84,6 +84,10 @@ leaderboards (materialized view or query)
 - `POST /api/submit` → stores words + final score for the authenticated user
 - `GET /api/leaderboard?date=YYYY-MM-DD` → top scores for the day
 
+### Health Check
+- `GET /api/health` → returns `{ status: "ok", env: { hasSupabaseUrl, vercelEnv, hasVercelUrl } }`.
+  - Reads only non-sensitive environment variables; does not expose secrets.
+
 ## Local Development
 
 ### Prerequisites
