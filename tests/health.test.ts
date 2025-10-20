@@ -15,7 +15,7 @@ describe("GET /api/health", () => {
   it("returns ok and env flags without exposing secrets", async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
 
-    const res = await GET(new Request("http://localhost/api/health"));
+    const res = await GET();
     expect(res.status).toBe(200);
 
     const json = (await res.json()) as HealthResponse;
