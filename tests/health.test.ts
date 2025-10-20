@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { GET } from "../app/api/health/route";
+import { GET, type HealthResponse } from "../app/api/health/route";
 
 const originalEnv = process.env;
 
@@ -18,7 +18,7 @@ describe("GET /api/health", () => {
     const res = await GET(new Request("http://localhost/api/health"));
     expect(res.status).toBe(200);
 
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as HealthResponse;
     expect(json.status).toBe("ok");
     expect(json.env.hasSupabaseUrl).toBe(true);
     expect(Object.prototype.hasOwnProperty.call(json.env, "vercelEnv")).toBe(

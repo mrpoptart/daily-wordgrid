@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-type HealthResponse = {
+export type HealthResponse = {
   status: "ok";
   env: {
     hasSupabaseUrl: boolean;
