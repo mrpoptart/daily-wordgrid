@@ -67,7 +67,6 @@ export function createPrng(seed: string): PRNG {
     // rejection sampling for unbiased result when bound not power of two
     const bound = boundExclusive >>> 0;
     const threshold = (0x1_0000_0000 - (0x1_0000_0000 % bound)) >>> 0;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const r = nextUint32();
       if (r < threshold) return r % bound;
