@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { newDb } from "pg-mem";
+import { DataType, newDb } from "pg-mem";
 import { Pool } from "pg";
 
 // pg-mem setup creates an in-memory Postgres and exposes a pg-compatible Pool
 function createTestDb() {
   const mem = newDb();
   // enable some basic pg features
-  mem.public.registerFunction({ name: "now", returns: "timestamp", implementation: () => new Date() });
+  mem.public.registerFunction({ name: "now", returns: DataType.timestamp, implementation: () => new Date() });
   const adapter = mem.adapters.createPg();
   const pool = new adapter.Pool();
   return { mem, pool: pool as unknown as Pool };
