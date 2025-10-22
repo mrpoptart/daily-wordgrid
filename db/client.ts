@@ -1,7 +1,8 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
-const databaseFilePath = process.env.DATABASE_PATH ?? "/workspace/db/app.sqlite";
+const connectionString =
+  process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/postgres";
 
-export const sqlite = new Database(databaseFilePath);
-export const db = drizzle(sqlite);
+export const pool = new Pool({ connectionString });
+export const db = drizzle(pool);

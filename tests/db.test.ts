@@ -1,75 +1,79 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { sqlite } from "@/db/client";
+import { newDb } from "pg-mem";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
-const TEST_DB = "/workspace/db/test.sqlite";
+// pg-mem setup creates an in-memory Postgres and exposes a pg-compatible Pool
+function createTestDb() {
+  const mem = newDb();
+  // enable some basic pg features
+  mem.public.registerFunction({ name: "now", returns: "timestamp", implementation: () => new Date() });
+  const adapter = mem.adapters.createPg();
+  const pool = new adapter.Pool();
+  return { mem, pool: pool as unknown as Pool };
+}
 
-// Override to use a test database
-process.env.DATABASE_PATH = TEST_DB;
+describe("drizzle schema (postgres)", () => {
+  let pool: Pool;
+  let db: ReturnType<typeof drizzle>;
 
-describe("drizzle schema", () => {
-  beforeAll(() => {
-    // Ensure fresh file
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("fs").rmSync(TEST_DB);
-    } catch {
-      // ignore if file does not exist
-    }
+  beforeAll(async () => {
+    const created = createTestDb();
+    pool = created.pool;
+    db = drizzle(pool);
 
-    // Create tables using raw SQL matching schema definitions
-    sqlite.exec(`
+    // Create tables using SQL compatible with our pg-core schema
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL UNIQUE,
-        letters TEXT NOT NULL,
-        seed TEXT NOT NULL,
-        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        date text NOT NULL UNIQUE,
+        letters text NOT NULL,
+        seed text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
       );
 
       CREATE TABLE IF NOT EXISTS submissions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL,
-        date TEXT NOT NULL,
-        words TEXT NOT NULL,
-        score INTEGER NOT NULL,
-        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
-        UNIQUE(user_id, date)
+        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        user_id text NOT NULL,
+        date text NOT NULL,
+        words text NOT NULL,
+        score integer NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT submissions_user_date_unique UNIQUE (user_id, date)
       );
     `);
   });
 
-  afterAll(() => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("fs").rmSync(TEST_DB);
-    } catch {
-      // ignore if file does not exist
-    }
+  afterAll(async () => {
+    await pool.end();
   });
 
   test("insert and query game", async () => {
-    const insert = sqlite.prepare(
-      `INSERT INTO games (date, letters, seed) VALUES (?, ?, ?)`
+    const r = await pool.query(
+      `INSERT INTO games (date, letters, seed) VALUES ($1, $2, $3) RETURNING id`,
+      ["2025-10-22", "ABCDEFGHIJKLMNOP", "seed-1"],
     );
-    const result = insert.run("2025-10-22", "ABCDEFGHIJKLMNOP", "seed-1");
-    expect(result.changes).toBe(1);
+    expect(r.rowCount).toBe(1);
 
-    const rows = sqlite.prepare(`SELECT * FROM games WHERE date = ?`).all("2025-10-22");
+    const rows = (await pool.query(`SELECT * FROM games WHERE date = $1`, ["2025-10-22"]))
+      .rows;
     expect(rows).toHaveLength(1);
     expect(rows[0].seed).toBe("seed-1");
   });
 
   test("unique (user_id, date) on submissions", async () => {
-    const insert = sqlite.prepare(
-      `INSERT INTO submissions (user_id, date, words, score) VALUES (?, ?, ?, ?)`
+    const r1 = await pool.query(
+      `INSERT INTO submissions (user_id, date, words, score) VALUES ($1, $2, $3, $4)`,
+      ["user-1", "2025-10-22", "A,B,C", 10],
     );
-    const r1 = insert.run("user-1", "2025-10-22", "A,B,C", 10);
-    expect(r1.changes).toBe(1);
+    expect(r1.rowCount).toBe(1);
 
-    // second insert should violate unique constraint
     let threw = false;
     try {
-      insert.run("user-1", "2025-10-22", "D,E", 5);
+      await pool.query(
+        `INSERT INTO submissions (user_id, date, words, score) VALUES ($1, $2, $3, $4)`,
+        ["user-1", "2025-10-22", "D,E", 5],
+      );
     } catch {
       threw = true;
     }
