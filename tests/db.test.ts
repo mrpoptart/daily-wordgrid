@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { newDb } from "pg-mem";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 // pg-mem setup creates an in-memory Postgres and exposes a pg-compatible Pool
@@ -15,12 +14,10 @@ function createTestDb() {
 
 describe("drizzle schema (postgres)", () => {
   let pool: Pool;
-  let db: ReturnType<typeof drizzle>;
 
   beforeAll(async () => {
     const created = createTestDb();
     pool = created.pool;
-    db = drizzle(pool);
 
     // Create tables using SQL compatible with our pg-core schema
     await pool.query(`
