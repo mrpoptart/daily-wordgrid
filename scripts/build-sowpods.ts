@@ -36,14 +36,12 @@ async function getSowpodsText(): Promise<string> {
   let lastError: unknown;
   for (const url of candidates) {
     try {
-      // eslint-disable-next-line no-console
       console.log(`Attempting download: ${url}`);
       const txt = await fetchText(url);
       if (!txt || !txt.trim()) throw new Error("empty response");
       return txt;
     } catch (err) {
       lastError = err;
-      // eslint-disable-next-line no-console
       console.warn(`Failed: ${url} -> ${(err as Error).message}`);
     }
   }
@@ -51,7 +49,6 @@ async function getSowpodsText(): Promise<string> {
   // Fallback to local asset if present
   const localAsset = join(repoRoot, "assets", "sowpods.txt");
   if (existsSync(localAsset)) {
-    // eslint-disable-next-line no-console
     console.log(`Using local asset fallback: ${localAsset}`);
     return readFileSync(localAsset, "utf8");
   }
@@ -79,15 +76,12 @@ async function main() {
   mkdirSync(outDir, { recursive: true });
   writeFileSync(outFile, JSON.stringify(words, null, 0) + "\n", "utf8");
 
-  // eslint-disable-next-line no-console
   console.log(
     `Wrote ${words.length.toLocaleString()} words → ${outFile.replace(repoRoot + "/", "")}`,
   );
 }
 
-// eslint-disable-next-line unicorn/prefer-top-level-await
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exitCode = 1;
 });
