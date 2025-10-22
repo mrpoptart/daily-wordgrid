@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isValidPath, MIN_PATH_LENGTH } from "@/lib/validation/paths";
+import { isValidPath } from "@/lib/validation/paths";
 import type { Coord } from "@/lib/validation/adjacency";
 import { generateBoardForDate } from "@/lib/board/generate";
 
