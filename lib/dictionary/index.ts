@@ -1,5 +1,9 @@
 import sowpods from "pf-sowpods";
 
+type SowpodsModule = {
+  verify: (word: string) => boolean;
+};
+
 /**
  * Case-insensitive SOWPODS verification. Returns false for empty/whitespace.
  */
@@ -9,5 +13,7 @@ export function isSowpodsWord(word: string): boolean {
   if (trimmed.length === 0) return false;
   // pf-sowpods.verify is case-insensitive
   // It accepts strings like 'banana' and returns true if present
-  return Boolean((sowpods as any)?.verify?.(trimmed));
+  const verifyFn = (sowpods as unknown as SowpodsModule).verify;
+  if (typeof verifyFn !== "function") return false;
+  return Boolean(verifyFn(trimmed));
 }
