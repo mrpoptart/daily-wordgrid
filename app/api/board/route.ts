@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateBoardForDate } from "@/lib/board/generate";
+import { formatUtcDate } from "@/lib/date";
 
 export const runtime = "edge";
 
@@ -22,13 +23,6 @@ const BoardResponseSchema = z.object({
 });
 
 export type BoardResponse = z.infer<typeof BoardResponseSchema>;
-
-function formatUtcDate(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 export async function GET(req?: Request) {
   try {

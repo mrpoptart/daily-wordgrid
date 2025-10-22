@@ -1,5 +1,6 @@
 import { createPrng } from "@/lib/board/prng";
 import type { Board } from "@/lib/board/types";
+import { formatUtcDate } from "@/lib/date";
 
 // Letter frequency weights (approximate English letter frequencies)
 // Values are relative; only ratios matter.
@@ -55,16 +56,8 @@ function pickLetter(prng: ReturnType<typeof createPrng>): string {
   return CUMULATIVE[lo].letter;
 }
 
-function formatDate(date: string | Date): string {
-  if (typeof date === "string") return date;
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 export function generateBoardForDate(date: string | Date, salt: string): Board {
-  const dateStr = formatDate(date);
+  const dateStr = typeof date === "string" ? date : formatUtcDate(date);
   const prng = createPrng(`${dateStr}|${salt}`);
   const cells: string[] = Array.from({ length: 25 }, () => pickLetter(prng));
   const board: Board = [
