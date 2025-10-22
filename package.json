@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "npm run lint && next build --turbopack",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --reporter=dot",
     "build:dict": "tsx scripts/build-sowpods.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prepare": "husky"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
@@ -34,11 +35,16 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
+    "husky": "^9",
+    "lint-staged": "^15",
     "prettier": "^3",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5",
     "typescript-eslint": "^8",
     "vitest": "^2"
+  },
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx}": "eslint --max-warnings=0 --fix"
   }
 }
