@@ -28,7 +28,7 @@ npm run dev
 ```
 
 ## Quality Gates
-- Lint: `npm run lint` (no warnings allowed)
+- Lint: `npm run lint` (no warnings allowed) — must be clean before commit/PR
 - Typecheck: `npm run typecheck`
 - Tests: `npm test`
 
@@ -48,3 +48,4 @@ CI will block merges if any gate fails.
 - Use clear, descriptive commit messages focused on intent
 - PR template checklist must be satisfied
 - Link issues and include context for reviewers
+ - Pre-commit hook: ESLint runs on staged files and auto-fixes when possible. Fix remaining issues before committing. If a commit fails, run `npm run lint` and address errors.

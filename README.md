@@ -106,6 +106,14 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+### Linting requirement (pre-commit and build)
+- The repo enforces linting before builds and commits.
+- Run locally before committing or opening a PR:
+  - `npm run lint` (no warnings allowed)
+  - `npm run typecheck`
+- `npm run build` will fail if `npm run lint` fails.
+- A pre-commit hook runs ESLint on staged files and auto-fixes where possible; fix any remaining issues before committing.
+
 ### Environment Variables
 Place these in `.env.local` (local) and in Vercel Project Settings (production):
 
