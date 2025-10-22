@@ -6,6 +6,10 @@ export type BoardResponse = {
   status: "ok";
   date: string; // YYYY-MM-DD
   board: Board;
+  letters: string; // flattened 25-letter string
+  env: {
+    hasDailySalt: boolean;
+  };
 };
 
 function normalizeDateInput(dateParam: string | null): string | null {
@@ -24,6 +28,16 @@ function formatDateUTC(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function flattenBoard(board: Board): string {
+  let out = "";
+  for (let r = 0; r < board.length; r++) {
+    for (let c = 0; c < board[r].length; c++) {
+      out += board[r][c];
+    }
+  }
+  return out;
+}
+
 export async function GET(req?: Request) {
   const url = req ? new URL(req.url) : null;
   const dateParam = url ? url.searchParams.get("date") : null;
@@ -31,13 +45,19 @@ export async function GET(req?: Request) {
 
   const date: string = normalized ?? formatDateUTC(new Date());
 
-  const salt = process.env.BOARD_DAILY_SALT ?? "local-dev-salt";
+  const envSaltRaw = typeof process?.env?.BOARD_DAILY_SALT === "string" ? process.env.BOARD_DAILY_SALT : null;
+  const envSalt = envSaltRaw ? envSaltRaw.trim() : null;
+  const hasDailySalt = Boolean(envSalt && envSalt.length > 0);
+  const salt = hasDailySalt ? (envSalt as string) : "dev-salt";
+
   const board = generateBoardForDate(date, salt);
 
   const body: BoardResponse = {
     status: "ok",
     date,
     board,
+    letters: flattenBoard(board),
+    env: { hasDailySalt },
   };
 
   return NextResponse.json(body, { status: 200 });
