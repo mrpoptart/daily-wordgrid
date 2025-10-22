@@ -1,7 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { db, sqlite } from "@/db/client";
-import { games, submissions } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { sqlite } from "@/db/client";
 
 const TEST_DB = "/workspace/db/test.sqlite";
 
@@ -12,8 +10,11 @@ describe("drizzle schema", () => {
   beforeAll(() => {
     // Ensure fresh file
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       require("fs").rmSync(TEST_DB);
-    } catch {}
+    } catch {
+      // ignore if file does not exist
+    }
 
     // Create tables using raw SQL matching schema definitions
     sqlite.exec(`
@@ -39,8 +40,11 @@ describe("drizzle schema", () => {
 
   afterAll(() => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       require("fs").rmSync(TEST_DB);
-    } catch {}
+    } catch {
+      // ignore if file does not exist
+    }
   });
 
   test("insert and query game", async () => {
@@ -66,7 +70,7 @@ describe("drizzle schema", () => {
     let threw = false;
     try {
       insert.run("user-1", "2025-10-22", "D,E", 5);
-    } catch (e) {
+    } catch {
       threw = true;
     }
     expect(threw).toBe(true);
