@@ -43,6 +43,6 @@
     "vitest": "^2"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": "eslint --max-warnings=0 --fix"
+    "**/*.{js,jsx,ts,tsx}": "eslint --max-warnings=0 --fix"
   }
 }
