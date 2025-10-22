@@ -4,7 +4,7 @@ import type { Board } from "@/lib/board/types";
 
 export type BoardResponse = {
   status: "ok";
-  date: string;
+  date: string; // YYYY-MM-DD
   board: Board;
   letters: string; // flattened 25-letter string
   env: {
@@ -12,11 +12,20 @@ export type BoardResponse = {
   };
 };
 
-function getSalt(): string | null {
-  const raw = process.env.BOARD_DAILY_SALT;
-  if (typeof raw !== "string") return null;
-  const trimmed = raw.trim();
-  return trimmed.length > 0 ? trimmed : null;
+function normalizeDateInput(dateParam: string | null): string | null {
+  if (!dateParam) return null;
+  const s = dateParam.trim();
+  if (s.length === 0) return null;
+  // basic ISO date validation (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  return s;
+}
+
+function formatDateUTC(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function flattenBoard(board: Board): string {
@@ -29,19 +38,18 @@ function flattenBoard(board: Board): string {
   return out;
 }
 
-export async function GET(request?: Request) {
-  const url = new URL(request?.url ?? "http://localhost/api/board");
-  const dateParam = url.searchParams.get("date");
+export async function GET(req?: Request) {
+  const url = req ? new URL(req.url) : null;
+  const dateParam = url ? url.searchParams.get("date") : null;
+  const normalized = normalizeDateInput(dateParam);
 
-  // Accept either YYYY-MM-DD or default to today's UTC date
-  const todayUtc = new Date();
-  const y = todayUtc.getUTCFullYear();
-  const m = String(todayUtc.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(todayUtc.getUTCDate()).padStart(2, "0");
-  const defaultDate = `${y}-${m}-${d}`;
-  const date = dateParam && dateParam.trim().length > 0 ? dateParam : defaultDate;
+  const date: string = normalized ?? formatDateUTC(new Date());
 
-  const salt = getSalt() ?? "dev-salt";
+  const envSaltRaw = typeof process?.env?.BOARD_DAILY_SALT === "string" ? process.env.BOARD_DAILY_SALT : null;
+  const envSalt = envSaltRaw ? envSaltRaw.trim() : null;
+  const hasDailySalt = Boolean(envSalt && envSalt.length > 0);
+  const salt = hasDailySalt ? (envSalt as string) : "dev-salt";
+
   const board = generateBoardForDate(date, salt);
 
   const body: BoardResponse = {
@@ -49,7 +57,7 @@ export async function GET(request?: Request) {
     date,
     board,
     letters: flattenBoard(board),
-    env: { hasDailySalt: getSalt() !== null },
+    env: { hasDailySalt },
   };
 
   return NextResponse.json(body, { status: 200 });
