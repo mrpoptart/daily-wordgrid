@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+// Note: Avoid Node.js crypto for Edge compatibility. Use a fast JS hash instead.
 
 export interface PRNG {
   nextUint32(): number; // unsigned 32-bit
@@ -10,13 +10,31 @@ function rotl32(x: number, k: number): number {
   return ((x << k) | (x >>> (32 - k))) >>> 0;
 }
 
+// xfnv1a32 and splitmix to derive 128 bits of state from a string seed
+function xfnv1a32(str: string): number {
+  let h = 0x811c9dc5; // FNV-1a 32-bit offset
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0; // FNV prime
+  }
+  return h >>> 0;
+}
+
+function splitmix32(h: number): number {
+  h = (h + 0x9e3779b9) >>> 0;
+  let t = h;
+  t = Math.imul(t ^ (t >>> 15), 0x85ebca6b) >>> 0;
+  t = Math.imul(t ^ (t >>> 13), 0xc2b2ae35) >>> 0;
+  return (t ^ (t >>> 16)) >>> 0;
+}
+
 function seedFromString(input: string): Uint32Array {
-  const hash = createHash("sha256").update(input).digest();
+  // derive 4x uint32 values from a base hash via splitmix
+  const base = xfnv1a32(input);
   const state = new Uint32Array(4);
+  let v = base >>> 0;
   for (let i = 0; i < 4; i++) {
-    const o = i * 4;
-    const v =
-      ((hash[o] << 24) | (hash[o + 1] << 16) | (hash[o + 2] << 8) | hash[o + 3]) >>> 0;
+    v = splitmix32(v);
     state[i] = v >>> 0;
   }
   // Ensure not all zeros
