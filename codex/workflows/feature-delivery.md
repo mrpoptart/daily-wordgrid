@@ -28,11 +28,11 @@ Use this workflow when implementing a new feature or substantial enhancement dri
 - Provide a QA report summarizing scenarios, results, and any defects.
 - Coordinate with the executor on fixes; rerun tests until clean.
 
-## 6. Merge and Close (Coordinator)
+## 6. Ready for Merge and Close (Coordinator)
 - Verify all review comments resolved and QA sign-off complete.
 - Ensure the PR adheres to merge standards (CI passing, labels set).
-- Merge or signal the maintainer to merge.
-- Update the issue with a final summary and close it.
+- Notify the project maintainer (the user) that the work is ready; do **not** merge or close issues autonomously.
+- Provide a final summary in the issue to assist the maintainer with their merge-and-close actions.
 
 ## Optional Extensions
 - For hotfixes, adapt steps to fast-track review while preserving QA checks.
