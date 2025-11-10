@@ -150,5 +150,42 @@ describe("POST /api/submit", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.status).toBe("error");
+    expect(json.error).toBe("invalid-user");
+  });
+
+  it("rejects empty word lists", async () => {
+    const { POST } = await import("../app/api/submit/route");
+    const res = await POST(
+      new Request("http://localhost/api/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId: "player", words: [], score: 0 }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.status).toBe("error");
+    expect(json.error).toBe("invalid-words");
+  });
+
+  it("rejects duplicate words regardless of casing", async () => {
+    const { POST } = await import("../app/api/submit/route");
+    const res = await POST(
+      new Request("http://localhost/api/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userId: "player",
+          words: ["Word", " word ", "another"],
+          score: 10,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.status).toBe("error");
+    expect(json.error).toBe("invalid-words");
   });
 });
