@@ -42,14 +42,24 @@ function normalizeUserId(value: unknown): string | null {
 }
 
 function normalizeWords(value: unknown): string[] | null {
-  if (!Array.isArray(value)) return null;
+  if (!Array.isArray(value) || value.length === 0) return null;
+
   const normalized: string[] = [];
+  const seen = new Set<string>();
+
   for (const item of value) {
     if (typeof item !== "string") return null;
+
     const trimmed = item.trim();
     if (trimmed.length === 0) return null;
+
+    const duplicateKey = trimmed.toLowerCase();
+    if (seen.has(duplicateKey)) return null;
+    seen.add(duplicateKey);
+
     normalized.push(trimmed);
   }
+
   return normalized;
 }
 
