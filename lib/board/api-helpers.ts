@@ -29,6 +29,20 @@ export function flattenBoard(board: Board): string {
   return out;
 }
 
+export function lettersToBoard(letters: string): Board | null {
+  if (typeof letters !== "string" || !/^[A-Z]{25}$/.test(letters)) {
+    return null;
+  }
+
+  const rows: string[][] = [[], [], [], [], []];
+  for (let i = 0; i < letters.length; i++) {
+    const row = Math.floor(i / 5);
+    rows[row].push(letters[i]);
+  }
+
+  return rows as Board;
+}
+
 export function resolveDailySalt(): { salt: string; hasDailySalt: boolean } {
   const raw = typeof process?.env?.BOARD_DAILY_SALT === "string" ? process.env.BOARD_DAILY_SALT : null;
   const trimmed = raw ? raw.trim() : "";

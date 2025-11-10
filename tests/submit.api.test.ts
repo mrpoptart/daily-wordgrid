@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Board } from "@/lib/board/types";
 import type { SubmitSuccessResponse } from "../app/api/submit/route";
 
 type StoredSubmission = {
@@ -18,6 +19,22 @@ type StoreState = {
 const storeState = vi.hoisted<StoreState>(() => ({
   records: new Map<string, StoredSubmission>(),
   nextId: 1,
+}));
+
+const mockBoard = vi.hoisted(() =>
+  [
+    ["C", "A", "T", "S", "X"],
+    ["H", "O", "U", "S", "E"],
+    ["P", "L", "A", "Y", "R"],
+    ["D", "O", "G", "S", "T"],
+    ["B", "I", "R", "D", "S"],
+  ] satisfies Board,
+);
+
+const generateBoardMock = vi.hoisted(() => vi.fn(() => mockBoard));
+
+vi.mock("@/lib/board/generate", () => ({
+  generateBoardForDate: generateBoardMock,
 }));
 
 vi.mock("@/db/client", () => {
@@ -69,6 +86,7 @@ function resetStore() {
 
 beforeEach(() => {
   resetStore();
+  generateBoardMock.mockClear();
 });
 
 describe("POST /api/submit", () => {
@@ -80,8 +98,8 @@ describe("POST /api/submit", () => {
       body: JSON.stringify({
         userId: "user-123",
         date: "2025-01-02",
-        words: ["aids", "gain"],
-        score: 5,
+        words: ["dogs", "house", "dogs"],
+        score: 999,
       }),
     });
 
@@ -92,8 +110,8 @@ describe("POST /api/submit", () => {
     expect(json.status).toBe("ok");
     expect(json.date).toBe("2025-01-02");
     expect(json.submission.userId).toBe("user-123");
-    expect(json.submission.words).toEqual(["aids", "gain"]);
-    expect(json.submission.score).toBe(5);
+    expect(json.submission.words).toEqual(["DOGS", "HOUSE"]);
+    expect(json.submission.score).toBe(3);
     expect(typeof json.submission.id).toBe("number");
     expect(json.submission.createdAt).toMatch(/T/);
   });
@@ -111,13 +129,14 @@ describe("POST /api/submit", () => {
         body: JSON.stringify({
           userId: "user-456",
           date: "2025-01-03",
-          words: ["WORD"],
-          score: 4,
+          words: ["dogs"],
         }),
       }),
     );
     const firstJson = (await first.json()) as SubmitSuccessResponse;
     const firstId = firstJson.submission.id;
+    expect(firstJson.submission.words).toEqual(["DOGS"]);
+    expect(firstJson.submission.score).toBe(1);
 
     const second = await POST(
       new Request("http://localhost/api/submit", {
@@ -125,16 +144,16 @@ describe("POST /api/submit", () => {
         body: JSON.stringify({
           userId: "user-456",
           date: "2025-01-03",
-          words: ["NEW"],
-          score: 7,
+          words: ["house", "cats"],
+          score: 42,
         }),
       }),
     );
 
     const secondJson = (await second.json()) as SubmitSuccessResponse;
     expect(secondJson.submission.id).toBe(firstId);
-    expect(secondJson.submission.words).toEqual(["NEW"]);
-    expect(secondJson.submission.score).toBe(7);
+    expect(secondJson.submission.words).toEqual(["HOUSE", "CATS"]);
+    expect(secondJson.submission.score).toBe(3);
   });
 
   it("validates input payload", async () => {
@@ -150,5 +169,25 @@ describe("POST /api/submit", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.status).toBe("error");
+  });
+
+  it("rejects words that are not playable on the generated board", async () => {
+    const { POST } = await import("../app/api/submit/route");
+    const res = await POST(
+      new Request("http://localhost/api/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userId: "user-789",
+          date: "2025-01-04",
+          words: ["bones"],
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.status).toBe("error");
+    expect(json.error).toBe("invalid-words");
   });
 });
