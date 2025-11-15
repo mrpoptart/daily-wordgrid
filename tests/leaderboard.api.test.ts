@@ -132,6 +132,46 @@ describe("GET /api/leaderboard", () => {
     expect(store.lastLimit).toBe(2);
   });
 
+  it("assigns identical ranks when scores tie", async () => {
+    store.rows = [
+      {
+        id: 10,
+        userId: "player-1",
+        score: 30,
+        words: "[\"first\"]",
+        createdAt: new Date("2025-04-01T00:00:05Z"),
+      },
+      {
+        id: 12,
+        userId: "player-2",
+        score: 30,
+        words: "[\"second\"]",
+        createdAt: new Date("2025-04-01T00:00:10Z"),
+      },
+      {
+        id: 14,
+        userId: "player-3",
+        score: 24,
+        words: "[\"third\"]",
+        createdAt: new Date("2025-04-01T00:01:00Z"),
+      },
+    ];
+    store.total = 3;
+
+    const { GET } = await import("../app/api/leaderboard/route");
+    const request = new Request("http://localhost/api/leaderboard?date=2025-04-01&limit=3");
+
+    const res = await GET(request);
+    expect(res.status).toBe(200);
+
+    const json = (await res.json()) as LeaderboardResponse;
+    expect(json.entries).toEqual([
+      expect.objectContaining({ userId: "player-1", rank: 1, score: 30 }),
+      expect.objectContaining({ userId: "player-2", rank: 1, score: 30 }),
+      expect.objectContaining({ userId: "player-3", rank: 3, score: 24 }),
+    ]);
+  });
+
   it("defaults the date and limit when omitted", async () => {
     store.rows = [
       {
