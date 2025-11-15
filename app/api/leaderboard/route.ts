@@ -157,13 +157,24 @@ export async function GET(req?: Request) {
 
     const totalPlayers = totals[0]?.value ?? 0;
 
-    const entries: LeaderboardEntry[] = rows.map((row, index) => ({
-      rank: index + 1,
-      userId: normalizeUserId(row.userId),
-      score: normalizeScore(row.score),
-      words: parseWordsField(row.words),
-      submittedAt: formatSubmittedAt(row.createdAt),
-    }));
+    let lastRank = 0;
+    let lastScore: number | null = null;
+
+    const entries: LeaderboardEntry[] = rows.map((row, index) => {
+      const normalizedScore = normalizeScore(row.score);
+
+      const rank = lastScore !== null && normalizedScore === lastScore ? lastRank : index + 1;
+      lastScore = normalizedScore;
+      lastRank = rank;
+
+      return {
+        rank,
+        userId: normalizeUserId(row.userId),
+        score: normalizedScore,
+        words: parseWordsField(row.words),
+        submittedAt: formatSubmittedAt(row.createdAt),
+      };
+    });
 
     const body: LeaderboardResponse = {
       status: "ok",
