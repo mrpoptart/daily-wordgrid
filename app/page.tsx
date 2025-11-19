@@ -3,6 +3,7 @@ import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
 
 const README_URL = "https://github.com/mrpoptart/daily-wordgrid#readme";
+const LOGIN_URL = "/login";
 
 const FEATURES = [
   {
@@ -67,9 +68,12 @@ export default function Home() {
           </div>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
             <Button asChild className="w-full px-8 sm:w-auto">
-              <Link href="/api/board">Preview today's board API</Link>
+              <Link href={LOGIN_URL}>Log in to play</Link>
             </Button>
             <Button asChild variant="secondary" className="w-full sm:w-auto">
+              <Link href="/api/board">Preview today's board API</Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full sm:w-auto">
               <Link href={README_URL} target="_blank" rel="noreferrer">
                 Read the technical plan
               </Link>
