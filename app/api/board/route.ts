@@ -1,4 +1,7 @@
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
+import { db } from "@/db/client";
+import { games } from "@/db/schema";
 import { generateBoardForDate } from "@/lib/board/generate";
 import type { Board } from "@/lib/board/types";
 import {
@@ -23,14 +26,28 @@ export async function GET(req?: Request) {
   const date = resolveBoardDate(dateParam);
 
   const { salt, hasDailySalt } = resolveDailySalt();
+  const seed = createHash("sha256").update(`${date}|${salt}`).digest("hex");
 
   const board = generateBoardForDate(date, salt);
+  const letters = flattenBoard(board);
+
+  try {
+    await db
+      .insert(games)
+      .values({ date, letters, seed })
+      .onConflictDoUpdate({
+        target: games.date,
+        set: { letters, seed },
+      });
+  } catch (error) {
+    console.error("Failed to persist daily board", error);
+  }
 
   const body: BoardResponse = {
     status: "ok",
     date,
     board,
-    letters: flattenBoard(board),
+    letters,
     env: { hasDailySalt },
   };
 
