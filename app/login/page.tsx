@@ -32,7 +32,11 @@ export default function LoginPage() {
         </div>
 
         <div className="flex-1 w-full max-w-md">
-          <LoginCard title="Sign in with email" description="We’ll send you a one-time magic link via Supabase." redirectPath="/" />
+          <LoginCard
+            title="Sign in with email"
+            description="We’ll send you a one-time magic link via Supabase."
+            redirectPath="/play"
+          />
         </div>
       </div>
     </div>
