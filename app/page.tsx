@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
 
@@ -49,7 +51,26 @@ const SCORING = [
   { label: "8+ letters", points: 11 },
 ] as const;
 
+function hasSupabaseSessionCookie() {
+  const authCookie = cookies()
+    .getAll()
+    .find((cookie) => cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token"));
+
+  if (!authCookie?.value) return false;
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(authCookie.value));
+    return Boolean(parsed?.currentSession?.access_token);
+  } catch {
+    return false;
+  }
+}
+
 export default function Home() {
+  if (hasSupabaseSessionCookie()) {
+    redirect("/play");
+  }
+
   return (
     <div className="bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-6xl flex-col gap-16 px-6 py-16 sm:py-20 lg:px-10">
