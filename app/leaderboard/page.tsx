@@ -1,4 +1,7 @@
-import type { LeaderboardResponse } from "@/app/api/leaderboard/route";
+import type {
+  LeaderboardErrorResponse,
+  LeaderboardResponse,
+} from "@/app/api/leaderboard/route";
 import { LeaderboardContent, LeaderboardUnavailableState } from "@/components/leaderboard/leaderboard-states";
 import { LeaderboardHeader } from "@/components/leaderboard/leaderboard-header";
 import { LeaderboardSummary } from "@/components/leaderboard/leaderboard-summary";
@@ -15,8 +18,15 @@ async function fetchLeaderboard(): Promise<LeaderboardResponse | null> {
       return null;
     }
 
-    const body = (await res.json()) as LeaderboardResponse | { status: string };
-    return body.status === "ok" ? body : null;
+    const body = (await res.json()) as
+      | LeaderboardResponse
+      | LeaderboardErrorResponse;
+
+    if (body.status === "ok") {
+      return body;
+    }
+
+    return null;
   } catch (error) {
     console.error("Failed to fetch leaderboard page data", error);
     return null;
