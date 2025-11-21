@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
-export function hasSupabaseSessionCookie() {
-  const authCookie = cookies()
+export async function hasSupabaseSessionCookie() {
+  const authCookie = (await cookies())
     .getAll()
     .find((cookie) => cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token"));
 
