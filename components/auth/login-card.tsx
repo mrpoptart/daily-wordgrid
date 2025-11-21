@@ -25,7 +25,7 @@ export function LoginCard({
   className,
   title = "Log in",
   description = "Use a Supabase magic link to start playing.",
-  redirectPath = "/",
+  redirectPath = "/play",
 }: LoginCardProps) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<FormState>("idle");

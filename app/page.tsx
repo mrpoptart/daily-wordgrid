@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
+import { hasSupabaseSessionCookie } from "@/lib/supabase/session";
 
 const README_URL = "https://github.com/mrpoptart/daily-wordgrid#readme";
 const LOGIN_URL = "/login";
@@ -50,6 +52,10 @@ const SCORING = [
 ] as const;
 
 export default function Home() {
+  if (hasSupabaseSessionCookie()) {
+    redirect("/play");
+  }
+
   return (
     <div className="bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-6xl flex-col gap-16 px-6 py-16 sm:py-20 lg:px-10">
