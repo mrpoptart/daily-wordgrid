@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import LeaderboardPage from "@/app/leaderboard/page";
 import type { LeaderboardResponse } from "@/app/api/leaderboard/route";
 import "@testing-library/jest-dom/vitest";
@@ -37,7 +37,7 @@ describe("Leaderboard page", () => {
   });
 
   it("renders standings when data loads", async () => {
-    (fetch as unknown as vi.Mock).mockResolvedValue({
+    (fetch as unknown as Mock).mockResolvedValue({
       ok: true,
       json: async () => sampleResponse,
     });
@@ -54,7 +54,7 @@ describe("Leaderboard page", () => {
 
   it("shows an offline state when the fetch fails", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    (fetch as unknown as vi.Mock).mockRejectedValue(new Error("network error"));
+    (fetch as unknown as Mock).mockRejectedValue(new Error("network error"));
 
     const page = await LeaderboardPage();
     render(page);
