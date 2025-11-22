@@ -56,7 +56,7 @@ describe("Play page", () => {
       screen.getByRole("heading", { name: /today's board/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("grid", { name: /daily wordgrid preview board/i }),
+      screen.getByRole("grid", { name: /interactive daily board/i }),
     ).toBeInTheDocument();
     expect(screen.getByText("A")).toBeInTheDocument();
     expect(screen.getByText("Y")).toBeInTheDocument();
