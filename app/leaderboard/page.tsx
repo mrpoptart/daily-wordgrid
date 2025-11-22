@@ -7,6 +7,8 @@ import { LeaderboardContent, LeaderboardUnavailableState } from "@/components/le
 import { LeaderboardHeader } from "@/components/leaderboard/leaderboard-header";
 import { LeaderboardSummary } from "@/components/leaderboard/leaderboard-summary";
 
+export const dynamic = "force-dynamic";
+
 const FALLBACK_BASE_URL = "http://localhost:3000";
 
 type LeaderboardSearchParams = {
@@ -31,7 +33,7 @@ async function fetchLeaderboard(params?: LeaderboardSearchParams): Promise<Leade
 
   let runtimeBaseUrl: string | null = null;
   try {
-    const requestHeaders = headers();
+    const requestHeaders = await headers();
     const forwardedProto = requestHeaders.get("x-forwarded-proto");
     const host = requestHeaders.get("host");
 

@@ -14,12 +14,12 @@ export const metadata = {
 
 const FALLBACK_BASE_URL = "http://localhost:3000";
 
-function resolveBaseUrl(): string {
+async function resolveBaseUrl(): Promise<string> {
   const envBaseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   if (envBaseUrl) return envBaseUrl;
 
   try {
-    const requestHeaders = headers();
+    const requestHeaders = await headers();
     const forwardedProto = requestHeaders.get("x-forwarded-proto");
     const host = requestHeaders.get("host");
 
@@ -34,7 +34,7 @@ function resolveBaseUrl(): string {
 }
 
 async function fetchBoard(): Promise<BoardResponse | null> {
-  const baseUrl = resolveBaseUrl();
+  const baseUrl = await resolveBaseUrl();
   const endpoint = `${baseUrl}/api/board`;
 
   try {
