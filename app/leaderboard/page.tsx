@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type {
   LeaderboardErrorResponse,
   LeaderboardResponse,
@@ -26,7 +27,22 @@ function isIsoDate(value?: string | null): value is string {
 }
 
 async function fetchLeaderboard(params?: LeaderboardSearchParams): Promise<LeaderboardResponse | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || FALLBACK_BASE_URL;
+  const envBaseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+
+  let runtimeBaseUrl: string | null = null;
+  try {
+    const requestHeaders = headers();
+    const forwardedProto = requestHeaders.get("x-forwarded-proto");
+    const host = requestHeaders.get("host");
+
+    if (forwardedProto && host) {
+      runtimeBaseUrl = `${forwardedProto}://${host}`;
+    }
+  } catch (error) {
+    console.error("Failed to read request headers for base URL", error);
+  }
+
+  const baseUrl = envBaseUrl || runtimeBaseUrl || FALLBACK_BASE_URL;
   const endpoint = new URL(`${baseUrl}/api/leaderboard`);
 
   if (isIsoDate(params?.date)) {
