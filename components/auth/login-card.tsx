@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { sendSupabaseMagicLink } from "@/lib/supabase/auth";
+import { buildSupabaseAuthorizeUrl, sendSupabaseMagicLink } from "@/lib/supabase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const STATUS_MESSAGES = {
   idle: "Enter your email to receive a magic link.",
   loading: "Sending a secure magic link...",
+  oauth: "Redirecting to Google...",
   success: "Magic link sent! Check your inbox to continue.",
 } as const;
 
@@ -31,7 +32,7 @@ export function LoginCard({
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string>("");
 
-  const isDisabled = state === "loading";
+  const isDisabled = state === "loading" || state === "oauth";
   const statusMessage = state === "error" ? error : STATUS_MESSAGES[state];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -52,6 +53,21 @@ export function LoginCard({
       setState("success");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "We couldn't start the login flow. Try again in a moment.");
+      setState("error");
+    }
+  }
+
+  function handleGoogleLogin() {
+    try {
+      setState("oauth");
+      setError("");
+
+      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}${redirectPath}` : undefined;
+      const authorizeUrl = buildSupabaseAuthorizeUrl({ provider: "google", redirectTo });
+
+      window.location.assign(authorizeUrl);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "We couldn't start Google login. Please try again.");
       setState("error");
     }
   }
@@ -83,6 +99,18 @@ export function LoginCard({
           {state === "loading" ? "Sending magic link..." : "Send magic link"}
         </Button>
       </form>
+
+      <div className="mt-6 space-y-3">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+          <span className="h-px flex-1 bg-slate-800" aria-hidden />
+          or
+          <span className="h-px flex-1 bg-slate-800" aria-hidden />
+        </div>
+
+        <Button type="button" variant="outline" className="w-full" disabled={isDisabled} onClick={handleGoogleLogin}>
+          Continue with Google
+        </Button>
+      </div>
 
       <p className={cn("mt-4 text-sm", state === "error" ? "text-red-300" : "text-slate-300")}>{statusMessage}</p>
     </div>
