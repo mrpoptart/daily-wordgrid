@@ -4,17 +4,17 @@ import type { BoardResponse } from "@/app/api/board/route";
 import { LoginRedirectHandler } from "@/components/auth/login-redirect-handler";
 import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
+import { resolveBaseUrl } from "@/lib/http/base-url";
 import { hasSupabaseSessionCookie } from "@/lib/supabase/session";
+import { headers } from "next/headers";
 
 export const metadata = {
   title: "Today's board • Daily Wordgrid",
   description: "View the deterministic 5×5 board for today's puzzle.",
 };
 
-const FALLBACK_BASE_URL = "http://localhost:3000";
-
 async function fetchBoard(): Promise<BoardResponse | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || FALLBACK_BASE_URL;
+  const baseUrl = resolveBaseUrl(headers);
   const endpoint = `${baseUrl}/api/board`;
 
   try {

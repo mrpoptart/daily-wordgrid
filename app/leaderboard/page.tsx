@@ -5,11 +5,11 @@ import type {
 import { LeaderboardContent, LeaderboardUnavailableState } from "@/components/leaderboard/leaderboard-states";
 import { LeaderboardHeader } from "@/components/leaderboard/leaderboard-header";
 import { LeaderboardSummary } from "@/components/leaderboard/leaderboard-summary";
-
-const FALLBACK_BASE_URL = "http://localhost:3000";
+import { resolveBaseUrl } from "@/lib/http/base-url";
+import { headers } from "next/headers";
 
 async function fetchLeaderboard(): Promise<LeaderboardResponse | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || FALLBACK_BASE_URL;
+  const baseUrl = resolveBaseUrl(headers);
   const endpoint = `${baseUrl}/api/leaderboard`;
 
   try {

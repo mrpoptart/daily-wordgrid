@@ -4,6 +4,19 @@ import LeaderboardPage from "@/app/leaderboard/page";
 import type { LeaderboardResponse } from "@/app/api/leaderboard/route";
 import "@testing-library/jest-dom/vitest";
 
+vi.mock("next/headers", () => ({
+  headers: () => ({
+    get: (key: string) => {
+      const normalized = key.toLowerCase();
+      if (normalized === "x-forwarded-proto") return "https";
+      if (normalized === "x-forwarded-host" || normalized === "host") {
+        return "example.com";
+      }
+      return null;
+    },
+  }),
+}));
+
 const sampleResponse: LeaderboardResponse = {
   status: "ok",
   date: "2025-01-01",
