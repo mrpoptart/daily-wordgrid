@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LoginRedirectHandler } from "@/components/auth/login-redirect-handler";
 import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
+import { fetchBoard } from "@/lib/board/fetch";
 import { hasSupabaseSessionCookie } from "@/lib/supabase/session";
 
 const README_URL = "https://github.com/mrpoptart/daily-wordgrid#readme";
@@ -57,6 +58,8 @@ export default async function Home() {
     redirect("/play");
   }
 
+  const boardData = await fetchBoard();
+
   return (
     <div className="bg-slate-950 text-slate-100">
       <LoginRedirectHandler />
@@ -103,7 +106,23 @@ export default async function Home() {
                 <p className="text-xs text-slate-400">Average play time</p>
               </div>
             </div>
-            <BoardPreview className="mx-auto" />
+            <BoardPreview
+              board={boardData?.board}
+              highlightPath={boardData ? [] : undefined}
+              caption={
+                boardData
+                  ? `Today's deterministic board (${boardData.date})`
+                  : undefined
+              }
+              footnote={
+                boardData
+                  ? boardData.env.hasDailySalt
+                    ? "Seeded with server-only salt"
+                    : "Using fallback seed; set BOARD_DAILY_SALT for production"
+                  : undefined
+              }
+              className="mx-auto"
+            />
             <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
               <span className="rounded-full border border-white/15 px-3 py-1">Min word length: 4 letters</span>
               <span className="rounded-full border border-white/15 px-3 py-1">No tile reuse per word</span>
