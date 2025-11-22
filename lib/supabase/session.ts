@@ -1,10 +1,10 @@
 import { headers } from "next/headers";
 
-export function hasSupabaseSessionCookie() {
+export async function hasSupabaseSessionCookie() {
   let cookieHeader: string | null;
 
   try {
-    cookieHeader = headers().get("cookie");
+    cookieHeader = (await headers()).get("cookie");
   } catch {
     return false;
   }

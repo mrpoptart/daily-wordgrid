@@ -4,8 +4,8 @@ import Home from "@/app/page";
 import "@testing-library/jest-dom/vitest";
 
 describe("Home page", () => {
-  it("renders the hero title and login call-to-action button", () => {
-    render(<Home />);
+  it("renders the hero title and login call-to-action button", async () => {
+    render(await Home());
 
     expect(
       screen.getByRole("heading", { name: /daily wordgrid/i }),
