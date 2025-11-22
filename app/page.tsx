@@ -94,7 +94,7 @@ export default async function Home() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-emerald-500/5">
             <div className="flex flex-col gap-4 pb-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.4em] text-emerald-200">Today's grid</p>
+                <p className="text-sm uppercase tracking-[0.4em] text-emerald-200">Sample grid</p>
                 <p className="text-2xl font-semibold text-white">Deterministic seed • 5×5 board</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-right">
@@ -103,7 +103,10 @@ export default async function Home() {
                 <p className="text-xs text-slate-400">Average play time</p>
               </div>
             </div>
-            <BoardPreview className="mx-auto" />
+            <BoardPreview
+              caption="Sample deterministic board"
+              className="mx-auto"
+            />
             <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
               <span className="rounded-full border border-white/15 px-3 py-1">Min word length: 4 letters</span>
               <span className="rounded-full border border-white/15 px-3 py-1">No tile reuse per word</span>

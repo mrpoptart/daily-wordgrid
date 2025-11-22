@@ -1,53 +1,15 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import type { BoardResponse } from "@/app/api/board/route";
 import { LoginRedirectHandler } from "@/components/auth/login-redirect-handler";
 import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
+import { fetchBoard } from "@/lib/board/fetch";
 import { hasSupabaseSessionCookie } from "@/lib/supabase/session";
 
 export const metadata = {
   title: "Today's board • Daily Wordgrid",
   description: "View the deterministic 5×5 board for today's puzzle.",
 };
-
-const FALLBACK_BASE_URL = "http://localhost:3000";
-
-async function resolveBaseUrl(): Promise<string> {
-  const envBaseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  if (envBaseUrl) return envBaseUrl;
-
-  try {
-    const requestHeaders = await headers();
-    const forwardedProto = requestHeaders.get("x-forwarded-proto");
-    const host = requestHeaders.get("host");
-
-    if (forwardedProto && host) {
-      return `${forwardedProto}://${host}`;
-    }
-  } catch (error) {
-    console.error("Failed to read request headers for base URL", error);
-  }
-
-  return FALLBACK_BASE_URL;
-}
-
-async function fetchBoard(): Promise<BoardResponse | null> {
-  const baseUrl = await resolveBaseUrl();
-  const endpoint = `${baseUrl}/api/board`;
-
-  try {
-    const res = await fetch(endpoint, { cache: "no-store" });
-    if (!res.ok) return null;
-
-    const body = (await res.json()) as BoardResponse;
-    return body.status === "ok" ? body : null;
-  } catch (error) {
-    console.error("Failed to load daily board", error);
-    return null;
-  }
-}
 
 export default async function PlayPage() {
   if (!(await hasSupabaseSessionCookie())) {
