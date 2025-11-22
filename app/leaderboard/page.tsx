@@ -8,12 +8,33 @@ import { LeaderboardSummary } from "@/components/leaderboard/leaderboard-summary
 
 const FALLBACK_BASE_URL = "http://localhost:3000";
 
-async function fetchLeaderboard(): Promise<LeaderboardResponse | null> {
+type LeaderboardSearchParams = {
+  date?: string;
+};
+
+function isIsoDate(value?: string | null): value is string {
+  if (!value) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map((part) => Number.parseInt(part, 10));
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    utcDate.getUTCFullYear() === year &&
+    utcDate.getUTCMonth() === month - 1 &&
+    utcDate.getUTCDate() === day
+  );
+}
+
+async function fetchLeaderboard(params?: LeaderboardSearchParams): Promise<LeaderboardResponse | null> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || FALLBACK_BASE_URL;
-  const endpoint = `${baseUrl}/api/leaderboard`;
+  const endpoint = new URL(`${baseUrl}/api/leaderboard`);
+
+  if (isIsoDate(params?.date)) {
+    endpoint.searchParams.set("date", params?.date);
+  }
 
   try {
-    const res = await fetch(endpoint, { cache: "no-store" });
+    const res = await fetch(endpoint.toString(), { cache: "no-store" });
     if (!res.ok) {
       return null;
     }
@@ -33,8 +54,12 @@ async function fetchLeaderboard(): Promise<LeaderboardResponse | null> {
   }
 }
 
-export default async function LeaderboardPage() {
-  const data = await fetchLeaderboard();
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams?: LeaderboardSearchParams;
+}) {
+  const data = await fetchLeaderboard(searchParams);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
