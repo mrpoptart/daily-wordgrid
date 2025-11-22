@@ -8,8 +8,10 @@ import { LeaderboardSummary } from "@/components/leaderboard/leaderboard-summary
 import { resolveBaseUrl } from "@/lib/http/base-url";
 import { headers } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 async function fetchLeaderboard(): Promise<LeaderboardResponse | null> {
-  const baseUrl = resolveBaseUrl(headers);
+  const baseUrl = await resolveBaseUrl(headers);
   const endpoint = `${baseUrl}/api/leaderboard`;
 
   try {

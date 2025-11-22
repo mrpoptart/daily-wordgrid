@@ -8,13 +8,15 @@ import { resolveBaseUrl } from "@/lib/http/base-url";
 import { hasSupabaseSessionCookie } from "@/lib/supabase/session";
 import { headers } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Today's board • Daily Wordgrid",
   description: "View the deterministic 5×5 board for today's puzzle.",
 };
 
 async function fetchBoard(): Promise<BoardResponse | null> {
-  const baseUrl = resolveBaseUrl(headers);
+  const baseUrl = await resolveBaseUrl(headers);
   const endpoint = `${baseUrl}/api/board`;
 
   try {
