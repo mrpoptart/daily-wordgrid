@@ -1,4 +1,10 @@
 import type { BoardResponse } from "@/app/api/board/route";
+import {
+  flattenBoard,
+  resolveBoardDate,
+  resolveDailySalt,
+} from "@/lib/board/api-helpers";
+import { generateBoardForDate } from "@/lib/board/generate";
 import { resolveBaseUrl } from "@/lib/url";
 
 const FALLBACK_BASE_URL = "http://localhost:3000";
@@ -9,12 +15,29 @@ export async function fetchBoard(): Promise<BoardResponse | null> {
 
   try {
     const res = await fetch(endpoint, { cache: "no-store" });
-    if (!res.ok) return null;
-
-    const body = (await res.json()) as BoardResponse;
-    return body.status === "ok" ? body : null;
+    if (res.ok) {
+      const body = (await res.json()) as BoardResponse;
+      if (body.status === "ok") return body;
+    }
   } catch (error) {
     console.error("Failed to load daily board", error);
-    return null;
   }
+
+  return buildLocalBoardResponse();
+}
+
+function buildLocalBoardResponse(): BoardResponse {
+  const date = resolveBoardDate(null);
+  const { salt, hasDailySalt } = resolveDailySalt();
+  const board = generateBoardForDate(date, salt);
+
+  return {
+    status: "ok",
+    date,
+    board,
+    letters: flattenBoard(board),
+    env: {
+      hasDailySalt,
+    },
+  };
 }
