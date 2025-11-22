@@ -20,6 +20,8 @@ export type SendMagicLinkParams = {
   redirectTo?: string;
 };
 
+type OAuthProvider = "google";
+
 export async function sendSupabaseMagicLink({ email, redirectTo }: SendMagicLinkParams): Promise<MagicLinkResult> {
   const { url, anonKey } = ensureEnv();
   const response = await fetch(`${url}/auth/v1/magiclink`, {
@@ -45,4 +47,22 @@ export async function sendSupabaseMagicLink({ email, redirectTo }: SendMagicLink
     success: true,
     message: "Check your email for the login link.",
   };
+}
+
+export function buildSupabaseAuthorizeUrl({
+  provider,
+  redirectTo,
+}: {
+  provider: OAuthProvider;
+  redirectTo?: string;
+}): string {
+  const { url } = ensureEnv();
+  const authorizeUrl = new URL(`${url}/auth/v1/authorize`);
+  authorizeUrl.searchParams.set("provider", provider);
+
+  if (redirectTo) {
+    authorizeUrl.searchParams.set("redirect_to", redirectTo);
+  }
+
+  return authorizeUrl.toString();
 }
