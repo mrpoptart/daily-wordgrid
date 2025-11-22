@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { BoardResponse } from "@/app/api/board/route";
@@ -13,8 +14,27 @@ export const metadata = {
 
 const FALLBACK_BASE_URL = "http://localhost:3000";
 
+async function resolveBaseUrl(): Promise<string> {
+  const envBaseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  if (envBaseUrl) return envBaseUrl;
+
+  try {
+    const requestHeaders = await headers();
+    const forwardedProto = requestHeaders.get("x-forwarded-proto");
+    const host = requestHeaders.get("host");
+
+    if (forwardedProto && host) {
+      return `${forwardedProto}://${host}`;
+    }
+  } catch (error) {
+    console.error("Failed to read request headers for base URL", error);
+  }
+
+  return FALLBACK_BASE_URL;
+}
+
 async function fetchBoard(): Promise<BoardResponse | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || FALLBACK_BASE_URL;
+  const baseUrl = await resolveBaseUrl();
   const endpoint = `${baseUrl}/api/board`;
 
   try {

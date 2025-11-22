@@ -42,7 +42,7 @@ describe("Leaderboard page", () => {
       json: async () => sampleResponse,
     });
 
-    const page = await LeaderboardPage();
+    const page = await LeaderboardPage({});
     render(page);
 
     expect(screen.getByRole("heading", { name: /daily standings/i })).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe("Leaderboard page", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     (fetch as unknown as Mock).mockRejectedValue(new Error("network error"));
 
-    const page = await LeaderboardPage();
+    const page = await LeaderboardPage({});
     render(page);
 
     expect(screen.getByText(/leaderboard unavailable/i)).toBeInTheDocument();
@@ -65,5 +65,31 @@ describe("Leaderboard page", () => {
     ).toBeInTheDocument();
 
     consoleSpy.mockRestore();
+  });
+
+  it("passes a valid date search param to the API", async () => {
+    (fetch as unknown as Mock).mockResolvedValue({
+      ok: true,
+      json: async () => sampleResponse,
+    });
+
+    const page = await LeaderboardPage({ searchParams: { date: "2025-02-02" } });
+    render(page);
+
+    expect(fetch).toHaveBeenCalledWith("http://localhost:3000/api/leaderboard?date=2025-02-02", {
+      cache: "no-store",
+    });
+  });
+
+  it("ignores malformed date search params", async () => {
+    (fetch as unknown as Mock).mockResolvedValue({
+      ok: true,
+      json: async () => sampleResponse,
+    });
+
+    const page = await LeaderboardPage({ searchParams: { date: "02-02-2025" } });
+    render(page);
+
+    expect(fetch).toHaveBeenCalledWith("http://localhost:3000/api/leaderboard", { cache: "no-store" });
   });
 });
