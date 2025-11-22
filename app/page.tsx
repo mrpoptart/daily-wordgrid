@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { LoginRedirectHandler } from "@/components/auth/login-redirect-handler";
 import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
+import { hasSupabaseSessionCookie } from "@/lib/supabase/session";
 
 const README_URL = "https://github.com/mrpoptart/daily-wordgrid#readme";
 const LOGIN_URL = "/login";
@@ -49,9 +52,15 @@ const SCORING = [
   { label: "8+ letters", points: 11 },
 ] as const;
 
-export default function Home() {
+export default async function Home() {
+  if (await hasSupabaseSessionCookie()) {
+    redirect("/play");
+  }
+
   return (
     <div className="bg-slate-950 text-slate-100">
+      <LoginRedirectHandler />
+
       <div className="mx-auto flex max-w-6xl flex-col gap-16 px-6 py-16 sm:py-20 lg:px-10">
         <header className="space-y-6 text-center lg:text-left">
           <span className="inline-flex items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200">

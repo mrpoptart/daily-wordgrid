@@ -6,6 +6,7 @@ export type BoardPreviewProps = {
   board?: readonly (readonly string[])[];
   highlightPath?: readonly Coordinate[];
   caption?: string;
+  footnote?: string | null;
   className?: string;
 };
 
@@ -29,11 +30,15 @@ export function BoardPreview({
   board = DEFAULT_BOARD,
   highlightPath = DEFAULT_HIGHLIGHT,
   caption = "Sample board seeded from 2025-01-02",
+  footnote,
   className,
 }: BoardPreviewProps) {
   const highlighted = new Set(
     highlightPath.map(([row, col]) => `${row}-${col}`),
   );
+
+  const resolvedFootnote =
+    footnote ?? (highlightPath.length > 0 ? "Highlighted path forms SOLVE" : null);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -66,9 +71,11 @@ export function BoardPreview({
       </div>
       <div className="text-center text-sm text-slate-300">
         <p>{caption}</p>
-        <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
-          Highlighted path forms SOLVE
-        </p>
+        {resolvedFootnote ? (
+          <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
+            {resolvedFootnote}
+          </p>
+        ) : null}
       </div>
     </div>
   );
