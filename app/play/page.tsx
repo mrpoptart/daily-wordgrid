@@ -38,6 +38,9 @@ export default async function PlayPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="flex items-center justify-center border-b border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-emerald-100">
+        Logged in
+      </div>
       <LoginRedirectHandler />
 
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16 lg:px-10">
