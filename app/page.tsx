@@ -51,8 +51,8 @@ const SCORING = [
   { label: "8+ letters", points: 11 },
 ] as const;
 
-export default async function Home() {
-  if (await hasSupabaseSessionCookie()) {
+export default function Home() {
+  if (hasSupabaseSessionCookie()) {
     redirect("/play");
   }
 

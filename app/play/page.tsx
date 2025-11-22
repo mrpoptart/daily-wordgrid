@@ -30,7 +30,7 @@ async function fetchBoard(): Promise<BoardResponse | null> {
 }
 
 export default async function PlayPage() {
-  if (!(await hasSupabaseSessionCookie())) {
+  if (!hasSupabaseSessionCookie()) {
     redirect("/login");
   }
 
