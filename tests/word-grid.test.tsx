@@ -20,6 +20,14 @@ const testBoard: Board = [
   ["A", "A", "A", "A", "A"],
 ];
 
+const heatBoard: Board = [
+  ["H", "E", "A", "T", "A"],
+  ["A", "A", "A", "A", "A"],
+  ["A", "A", "A", "A", "A"],
+  ["A", "A", "A", "A", "A"],
+  ["A", "A", "A", "A", "A"],
+];
+
 describe("WordGrid", () => {
   it("lets players tap adjacent letters to add a word", async () => {
     render(<WordGrid board={testBoard} />);
@@ -34,6 +42,7 @@ describe("WordGrid", () => {
     fireEvent.pointerEnter(fourth);
     fireEvent.pointerUp(fourth);
 
+    fireEvent.click(fourth);
     expect(screen.queryByRole("listitem")).toBeNull();
 
     fireEvent.click(fourth);
@@ -62,7 +71,7 @@ describe("WordGrid", () => {
     expect(third).toHaveAttribute("aria-label", expect.stringMatching(/selected/i));
   });
 
-  it("taps the last letter to submit and clear the selection", async () => {
+  it("taps the last letter twice to submit and clear the selection", async () => {
     render(<WordGrid board={testBoard} />);
 
     const first = screen.getAllByRole("button", { name: /row 1, column 1: t/i })[0];
@@ -79,6 +88,7 @@ describe("WordGrid", () => {
     fireEvent.pointerDown(lastLetter);
     fireEvent.pointerUp(lastLetter);
 
+    fireEvent.click(lastLetter);
     fireEvent.click(lastLetter);
 
     const listItem = await screen.findByRole("listitem");
@@ -101,9 +111,15 @@ describe("WordGrid", () => {
     const third = screen.getAllByRole("button", { name: /row 1, column 3: s/i })[0];
     const lastLetter = screen.getAllByRole("button", { name: /row 1, column 4: t/i })[0];
 
-    fireEvent.click(first);
-    fireEvent.click(second);
-    fireEvent.click(third);
+    fireEvent.pointerDown(first);
+    fireEvent.pointerUp(first);
+    fireEvent.pointerDown(second);
+    fireEvent.pointerUp(second);
+    fireEvent.pointerDown(third);
+    fireEvent.pointerUp(third);
+    fireEvent.pointerDown(lastLetter);
+    fireEvent.pointerUp(lastLetter);
+
     fireEvent.click(lastLetter);
 
     expect(screen.queryByRole("listitem")).toBeNull();
@@ -112,5 +128,59 @@ describe("WordGrid", () => {
 
     const listItem = await screen.findByRole("listitem");
     expect(listItem).toHaveTextContent("TEST");
+  });
+
+  it("only submits after a second tap on the final tile during tap flows", async () => {
+    render(<WordGrid board={heatBoard} />);
+
+    const first = screen.getAllByRole("button", { name: /row 1, column 1: h/i })[0];
+    const second = screen.getAllByRole("button", { name: /row 1, column 2: e/i })[0];
+    const third = screen.getAllByRole("button", { name: /row 1, column 3: a/i })[0];
+    const lastLetter = screen.getAllByRole("button", { name: /row 1, column 4: t/i })[0];
+
+    fireEvent.pointerDown(first);
+    fireEvent.pointerUp(first);
+    fireEvent.pointerDown(second);
+    fireEvent.pointerUp(second);
+    fireEvent.pointerDown(third);
+    fireEvent.pointerUp(third);
+    fireEvent.pointerDown(lastLetter);
+    fireEvent.pointerUp(lastLetter);
+
+    fireEvent.click(lastLetter);
+
+    expect(screen.queryByRole("listitem")).toBeNull();
+
+    fireEvent.click(lastLetter);
+
+    const listItem = await screen.findByRole("listitem");
+    expect(listItem).toHaveTextContent("HEAT");
+  });
+
+  it("allows the add button to submit after arming the last tile", async () => {
+    render(<WordGrid board={heatBoard} />);
+
+    const first = screen.getAllByRole("button", { name: /row 1, column 1: h/i })[0];
+    const second = screen.getAllByRole("button", { name: /row 1, column 2: e/i })[0];
+    const third = screen.getAllByRole("button", { name: /row 1, column 3: a/i })[0];
+    const lastLetter = screen.getAllByRole("button", { name: /row 1, column 4: t/i })[0];
+
+    fireEvent.pointerDown(first);
+    fireEvent.pointerUp(first);
+    fireEvent.pointerDown(second);
+    fireEvent.pointerUp(second);
+    fireEvent.pointerDown(third);
+    fireEvent.pointerUp(third);
+    fireEvent.pointerDown(lastLetter);
+    fireEvent.pointerUp(lastLetter);
+
+    fireEvent.click(lastLetter);
+
+    expect(screen.queryByRole("listitem")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /add word/i }));
+
+    const listItem = await screen.findByRole("listitem");
+    expect(listItem).toHaveTextContent("HEAT");
   });
 });

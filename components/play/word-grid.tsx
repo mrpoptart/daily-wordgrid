@@ -28,10 +28,15 @@ export function WordGrid({ board }: WordGridProps) {
   const [path, setPath] = useState<Coord[]>([]);
   const [words, setWords] = useState<AddedWord[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const pendingSubmitRef = useRef(false);
   const [status, setStatus] = useState<Status>({
     tone: "muted",
     message: "Tap adjacent letters to build a path.",
   });
+
+  function updatePendingSubmit(next: boolean) {
+    pendingSubmitRef.current = next;
+  }
 
   const latestPathRef = useRef<Coord[]>([]);
 
@@ -45,6 +50,7 @@ export function WordGrid({ board }: WordGridProps) {
   function resetPath(nextStatus?: Status) {
     setPath([]);
     latestPathRef.current = [];
+    updatePendingSubmit(false);
     if (nextStatus) setStatus(nextStatus);
   }
 
@@ -97,6 +103,7 @@ export function WordGrid({ board }: WordGridProps) {
     if (path.length === 0) {
       setPath([next]);
       latestPathRef.current = [next];
+      updatePendingSubmit(false);
       setStatus({ tone: "muted", message: "Keep tapping adjacent letters." });
       return;
     }
@@ -106,9 +113,19 @@ export function WordGrid({ board }: WordGridProps) {
 
     if (isSameCoord(lastCoord, next)) {
       latestPathRef.current = path;
-      if (shouldAutoSubmit && path.length >= MIN_PATH_LENGTH) {
-        submitPath(path);
+
+      if (shouldAutoSubmit) {
+        if (pendingSubmitRef.current && path.length >= MIN_PATH_LENGTH) {
+          submitPath(path);
+          updatePendingSubmit(false);
+          return;
+        }
+
+        updatePendingSubmit(true);
+        return;
       }
+
+      updatePendingSubmit(pendingSubmitRef.current);
       return;
     }
 
@@ -125,11 +142,13 @@ export function WordGrid({ board }: WordGridProps) {
     const nextPath = [...path, next];
     setPath(nextPath);
     latestPathRef.current = nextPath;
+    updatePendingSubmit(false);
     setStatus({ tone: "muted", message: "Nice—now add or keep extending." });
   }
 
   function handleUndo() {
     setPath((prev) => prev.slice(0, -1));
+    updatePendingSubmit(false);
     setStatus({ tone: "muted", message: "Removed the last letter." });
   }
 
@@ -142,6 +161,7 @@ export function WordGrid({ board }: WordGridProps) {
 
     setPath([]);
     latestPathRef.current = [];
+    updatePendingSubmit(false);
   }, [words.length]);
 
   return (
