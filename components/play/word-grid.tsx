@@ -1,5 +1,6 @@
 "use client";
 
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Board } from "@/lib/board/types";
@@ -46,6 +47,20 @@ export function WordGrid({ board }: WordGridProps) {
     () => words.reduce((sum, entry) => sum + entry.score, 0),
     [words],
   );
+
+  useEffect(() => {
+    function stopDragging() {
+      setIsDragging(false);
+    }
+
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+
+    return () => {
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointercancel", stopDragging);
+    };
+  }, []);
 
   function resetPath(nextStatus?: Status) {
     setPath([]);
@@ -194,7 +209,14 @@ export function WordGrid({ board }: WordGridProps) {
                   aria-label={`Row ${rowIndex + 1}, Column ${colIndex + 1}: ${letter}${
                     isSelected ? " (selected)" : ""
                   }`}
-                  onPointerDown={() => {
+                  onPointerDown={(event: ReactPointerEvent<HTMLButtonElement>) => {
+                    if (event.pointerType === "touch") {
+                      const target = event.currentTarget;
+                      if (target.hasPointerCapture?.(event.pointerId)) {
+                        target.releasePointerCapture(event.pointerId);
+                      }
+                    }
+
                     setIsDragging(true);
                     handleSelect(rowIndex, colIndex);
                   }}
