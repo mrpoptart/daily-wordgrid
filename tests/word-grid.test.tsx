@@ -92,4 +92,25 @@ describe("WordGrid", () => {
       );
     });
   });
+
+  it("requires tapping the last letter twice before submitting", async () => {
+    render(<WordGrid board={testBoard} />);
+
+    const first = screen.getAllByRole("button", { name: /row 1, column 1: t/i })[0];
+    const second = screen.getAllByRole("button", { name: /row 1, column 2: e/i })[0];
+    const third = screen.getAllByRole("button", { name: /row 1, column 3: s/i })[0];
+    const lastLetter = screen.getAllByRole("button", { name: /row 1, column 4: t/i })[0];
+
+    fireEvent.click(first);
+    fireEvent.click(second);
+    fireEvent.click(third);
+    fireEvent.click(lastLetter);
+
+    expect(screen.queryByRole("listitem")).toBeNull();
+
+    fireEvent.click(lastLetter);
+
+    const listItem = await screen.findByRole("listitem");
+    expect(listItem).toHaveTextContent("TEST");
+  });
 });

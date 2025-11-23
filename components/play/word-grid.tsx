@@ -126,10 +126,6 @@ export function WordGrid({ board }: WordGridProps) {
     setPath(nextPath);
     latestPathRef.current = nextPath;
     setStatus({ tone: "muted", message: "Nice—now add or keep extending." });
-
-    if (shouldAutoSubmit && nextPath.length >= MIN_PATH_LENGTH) {
-      submitPath(nextPath);
-    }
   }
 
   function handleUndo() {
