@@ -183,4 +183,53 @@ describe("WordGrid", () => {
     const listItem = await screen.findByRole("listitem");
     expect(listItem).toHaveTextContent("HEAT");
   });
+
+  it("highlights a matching path while typing and submits on enter", async () => {
+    render(<WordGrid board={testBoard} />);
+
+    const input = screen.getByLabelText(/type a word/i);
+
+    fireEvent.change(input, { target: { value: "TEST" } });
+
+    await waitFor(() => {
+      const firstTile = screen.getAllByRole("button", { name: /row 1, column 1: t/i })[0];
+      expect(firstTile).toHaveAttribute(
+        "aria-label",
+        expect.stringMatching(/selected/i),
+      );
+    });
+
+    const form = input.closest("form");
+    expect(form).not.toBeNull();
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    const listItem = await screen.findByRole("listitem");
+    expect(listItem).toHaveTextContent("TEST");
+  });
+
+  it("shows errors when the typed word cannot be formed", async () => {
+    render(<WordGrid board={testBoard} />);
+
+    const input = screen.getByLabelText(/type a word/i);
+
+    fireEvent.change(input, { target: { value: "ZZZZ" } });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /no valid path for that sequence/i,
+    );
+
+    const form = input.closest("form");
+    expect(form).not.toBeNull();
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(
+        /no valid path for that word on this board/i,
+      );
+    });
+  });
 });

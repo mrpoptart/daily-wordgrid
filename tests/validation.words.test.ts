@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Board } from "@/lib/board/types";
-import { validateWord, assembleWord } from "@/lib/validation/words";
+import { assembleWord, findPathForWord, validateWord } from "@/lib/validation/words";
 
 const BOARD: Board = [
   ["B", "A", "N", "A", "N"],
@@ -80,5 +80,23 @@ describe("validateWord", () => {
     } else {
       expect(res.reason).toBe("not-in-dictionary");
     }
+  });
+});
+
+describe("findPathForWord", () => {
+  it("returns a valid path for a dictionary word", () => {
+    const result = findPathForWord(BOARD, "BANANA");
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result).toHaveLength(BANANA_VALID_PATH.length);
+      const validation = validateWord(BOARD, result);
+      expect(validation.ok).toBe(true);
+      expect(validation.word).toBe("BANANA");
+    }
+  });
+
+  it("returns null when no path exists", () => {
+    const result = findPathForWord(BOARD, "ZZZZ");
+    expect(result).toBeNull();
   });
 });
