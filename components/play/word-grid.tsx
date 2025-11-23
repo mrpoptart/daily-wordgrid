@@ -33,10 +33,7 @@ export function WordGrid({ board }: WordGridProps) {
     message: "Tap adjacent letters to build a path.",
   });
 
-  const hasDraggedRef = useRef(false);
   const latestPathRef = useRef<Coord[]>([]);
-  const pendingSubmitRef = useRef(false);
-  const skipClickRef = useRef(false);
 
   const currentWord = useMemo(() => assembleWord(board, path), [board, path]);
 
@@ -48,14 +45,10 @@ export function WordGrid({ board }: WordGridProps) {
   function resetPath(nextStatus?: Status) {
     setPath([]);
     latestPathRef.current = [];
-    pendingSubmitRef.current = false;
-    hasDraggedRef.current = false;
-    skipClickRef.current = false;
     if (nextStatus) setStatus(nextStatus);
   }
 
   function submitPath(targetPath: Coord[]) {
-    pendingSubmitRef.current = false;
     const validation = validateWord(board, targetPath);
     if (!validation.ok) {
       if (validation.reason === "too-short") {
@@ -113,11 +106,8 @@ export function WordGrid({ board }: WordGridProps) {
 
     if (isSameCoord(lastCoord, next)) {
       latestPathRef.current = path;
-      if (shouldAutoSubmit) {
-        pendingSubmitRef.current = true;
-        if (path.length >= MIN_PATH_LENGTH) {
-          submitPath(path);
-        }
+      if (shouldAutoSubmit && path.length >= MIN_PATH_LENGTH) {
+        submitPath(path);
       }
       return;
     }
@@ -137,11 +127,8 @@ export function WordGrid({ board }: WordGridProps) {
     latestPathRef.current = nextPath;
     setStatus({ tone: "muted", message: "Nice—now add or keep extending." });
 
-    if (shouldAutoSubmit) {
-      pendingSubmitRef.current = true;
-      if (nextPath.length >= MIN_PATH_LENGTH) {
-        submitPath(nextPath);
-      }
+    if (shouldAutoSubmit && nextPath.length >= MIN_PATH_LENGTH) {
+      submitPath(nextPath);
     }
   }
 
@@ -155,20 +142,10 @@ export function WordGrid({ board }: WordGridProps) {
   }
 
   useEffect(() => {
-    if (!pendingSubmitRef.current) return;
-    if (path.length < MIN_PATH_LENGTH) return;
-
-    pendingSubmitRef.current = false;
-    submitPath(path);
-  }, [path]);
-
-  useEffect(() => {
     if (words.length === 0) return;
 
     setPath([]);
     latestPathRef.current = [];
-    hasDraggedRef.current = false;
-    skipClickRef.current = false;
   }, [words.length]);
 
   return (
@@ -203,30 +180,16 @@ export function WordGrid({ board }: WordGridProps) {
                   }`}
                   onPointerDown={() => {
                     setIsDragging(true);
-                    hasDraggedRef.current = false;
                     handleSelect(rowIndex, colIndex);
                   }}
                   onPointerEnter={() => {
                     if (!isDragging) return;
-                    hasDraggedRef.current = true;
                     handleSelect(rowIndex, colIndex);
                   }}
                   onPointerUp={() => {
                     setIsDragging(false);
-                    pendingSubmitRef.current = true;
-                    const currentPath = latestPathRef.current;
-                    if (currentPath.length >= MIN_PATH_LENGTH) {
-                      submitPath(currentPath);
-                    }
-
-                    skipClickRef.current = true;
                   }}
                   onClick={() => {
-                    if (skipClickRef.current) {
-                      skipClickRef.current = false;
-                      return;
-                    }
-
                     handleSelect(rowIndex, colIndex, { autoSubmit: true });
                   }}
                   className={cn(

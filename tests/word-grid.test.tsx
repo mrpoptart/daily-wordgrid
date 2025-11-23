@@ -34,6 +34,10 @@ describe("WordGrid", () => {
     fireEvent.pointerEnter(fourth);
     fireEvent.pointerUp(fourth);
 
+    expect(screen.queryByRole("listitem")).toBeNull();
+
+    fireEvent.click(fourth);
+
     const statuses = await screen.findAllByRole("status");
     expect(statuses.at(-1)).toHaveTextContent(/added test/i);
     const listItem = await screen.findByRole("listitem");
