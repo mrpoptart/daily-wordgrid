@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 
 export type WordGridProps = {
   board: Board;
+  date: string;
 };
 
 type Status =
@@ -29,16 +30,89 @@ function isSameCoord(a: Coord, b: Coord): boolean {
   return a[0] === b[0] && a[1] === b[1];
 }
 
-export function WordGrid({ board }: WordGridProps) {
+export function WordGrid({ board, date }: WordGridProps) {
   const [path, setPath] = useState<Coord[]>([]);
   const [words, setWords] = useState<AddedWord[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isHydrating, setIsHydrating] = useState(true);
   const pendingSubmitRef = useRef(false);
   const [typedWord, setTypedWord] = useState("");
   const [status, setStatus] = useState<Status>({
     tone: "muted",
     message: "Tap adjacent letters to build a path.",
   });
+
+  function decodeSupabaseUserId(): string | null {
+    if (typeof document === "undefined") return null;
+
+    const authCookie = document.cookie
+      .split(";")
+      .map((pair) => pair.trim())
+      .find((entry) => entry.startsWith("sb-") && entry.endsWith("-auth-token"));
+
+    if (!authCookie) return null;
+
+    const [, value] = authCookie.split("=");
+    if (!value) return null;
+
+    try {
+      const decoded = JSON.parse(decodeURIComponent(value));
+      const accessToken = decoded?.currentSession?.access_token;
+      if (typeof accessToken !== "string") return null;
+
+      const [, payload] = accessToken.split(".");
+      if (!payload) return null;
+
+      const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+      const sub = json?.sub;
+      return typeof sub === "string" && sub.trim().length > 0 ? sub : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function resolveUserId(): string | null {
+    if (typeof window === "undefined") return null;
+
+    const supabaseId = decodeSupabaseUserId();
+    if (supabaseId) return supabaseId;
+
+    const localKey = "wordgrid-local-user-id";
+    const existingLocalId = window.localStorage.getItem(localKey);
+    if (existingLocalId && existingLocalId.trim()) return existingLocalId;
+
+    const generated = crypto.randomUUID();
+    window.localStorage.setItem(localKey, generated);
+    return generated;
+  }
+
+  async function persistWords(nextWords: AddedWord[]) {
+    if (!userId) return;
+
+    try {
+      const response = await fetch("/api/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          date,
+          words: nextWords.map((entry) => entry.word),
+          score: nextWords.reduce((sum, entry) => sum + entry.score, 0),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to persist words: ${response.status}`);
+      }
+    } catch (error) {
+      console.error(error);
+      setStatus({
+        tone: "error",
+        message: "Couldn't save progress. We'll retry on your next add.",
+      });
+    }
+  }
 
   function updatePendingSubmit(next: boolean) {
     pendingSubmitRef.current = next;
@@ -99,7 +173,11 @@ export function WordGrid({ board }: WordGridProps) {
     }
 
     const score = scoreWordLength(word.length);
-    setWords((prev) => [...prev, { word, score }]);
+    setWords((prev) => {
+      const next = [...prev, { word, score }];
+      void persistWords(next);
+      return next;
+    });
     resetPath({ tone: "success", message: `Added ${word} (+${score} pts).` });
   }
 
@@ -224,6 +302,61 @@ export function WordGrid({ board }: WordGridProps) {
     submitPath(matchingPath);
     setTypedWord("");
   }
+
+  useEffect(() => {
+    const resolvedUserId = resolveUserId();
+
+    if (!resolvedUserId) {
+      setStatus({
+        tone: "error",
+        message: "We couldn't find your session. Try logging in again.",
+      });
+      setIsHydrating(false);
+      return;
+    }
+
+    setUserId(resolvedUserId);
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let isMounted = true;
+
+    async function loadExistingSubmission() {
+      try {
+        const response = await fetch(`/api/submit?userId=${encodeURIComponent(userId)}&date=${date}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch existing submission: ${response.status}`);
+        }
+
+        const json = (await response.json()) as { status: string; submission: { words: string[] } | null };
+        if (json.submission && Array.isArray(json.submission.words)) {
+          const hydrated = json.submission.words.map((word) => ({
+            word,
+            score: scoreWordLength(word.length),
+          }));
+          if (isMounted) {
+            setWords(hydrated);
+            setStatus({ tone: "muted", message: "Restored your saved words for today." });
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        if (isMounted) {
+          setStatus({ tone: "error", message: "Couldn't load saved words. Try refreshing." });
+        }
+      } finally {
+        if (isMounted) setIsHydrating(false);
+      }
+    }
+
+    loadExistingSubmission();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [date, userId]);
 
   useEffect(() => {
     if (words.length === 0) return;
@@ -376,7 +509,9 @@ export function WordGrid({ board }: WordGridProps) {
           </div>
         </div>
 
-        {words.length === 0 ? (
+        {isHydrating ? (
+          <p className="text-sm text-slate-300">Loading your saved words…</p>
+        ) : words.length === 0 ? (
           <p className="text-sm text-slate-300">
             Added words will appear here with their point values.
           </p>

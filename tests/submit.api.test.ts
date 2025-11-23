@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SubmitSuccessResponse } from "../app/api/submit/route";
+import type {
+  FetchSubmissionResponse,
+  SubmitSuccessResponse,
+} from "../app/api/submit/route";
 
 type StoredSubmission = {
   id: number;
@@ -45,6 +48,26 @@ vi.mock("@/db/client", () => {
     };
   }
 
+  function findFirst({
+    where,
+  }: {
+    where?: (
+      fields: { userId: string; date: string },
+      operators: { eq: (field: string, value: string) => boolean; and: (...values: boolean[]) => boolean },
+    ) => boolean;
+  }) {
+    const operators = {
+      eq: (field: string, value: string) => field === value,
+      and: (...values: boolean[]) => values.every(Boolean),
+    } as const;
+
+    const match = Array.from(storeState.records.values()).find((record) =>
+      where ? where({ userId: record.userId, date: record.date }, operators) : true,
+    );
+
+    return match ? { ...match } : null;
+  }
+
   return {
     db: {
       insert: () => ({
@@ -58,6 +81,9 @@ vi.mock("@/db/client", () => {
           };
         },
       }),
+      query: {
+        submissions: { findFirst },
+      },
     },
   };
 });
@@ -211,6 +237,40 @@ describe("POST /api/submit", () => {
     expect(secondJson.submission.id).toBe(firstJson.submission.id);
     expect(secondJson.submission.words).toEqual(["first", "second"]);
     expect(storeState.records.get("returning|2025-01-06")?.words).toBe('["first","second"]');
+  });
+
+  it("returns a saved submission when requested", async () => {
+    const { GET, POST } = await import("../app/api/submit/route");
+
+    await POST(
+      new Request("http://localhost/api/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userId: "hydrated", // persist initial progress
+          date: "2025-02-01",
+          words: ["one", "two"],
+          score: 3,
+        }),
+      }),
+    );
+
+    const response = await GET(new Request("http://localhost/api/submit?userId=hydrated&date=2025-02-01"));
+    const json = (await response.json()) as FetchSubmissionResponse;
+
+    expect(json.submission?.userId).toBe("hydrated");
+    expect(json.submission?.words).toEqual(["one", "two"]);
+    expect(json.submission?.score).toBe(3);
+  });
+
+  it("returns null when no submission exists for the user/date", async () => {
+    const { GET } = await import("../app/api/submit/route");
+
+    const response = await GET(new Request("http://localhost/api/submit?userId=missing&date=2025-03-01"));
+    const json = (await response.json()) as FetchSubmissionResponse;
+
+    expect(json.status).toBe("ok");
+    expect(json.submission).toBeNull();
   });
 
   it("validates input payload", async () => {
