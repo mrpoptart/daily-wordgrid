@@ -23,6 +23,10 @@ export type SubmitSuccessResponse = {
   };
 };
 
+export type FetchSubmissionResponse =
+  | { status: "ok"; date: string; submission: SubmitSuccessResponse["submission"] }
+  | { status: "ok"; date: string; submission: null };
+
 type SubmitError =
   | "invalid-json"
   | "invalid-user"
@@ -137,6 +141,58 @@ export async function POST(req: Request) {
     return NextResponse.json(body, { status: 200 });
   } catch (error) {
     console.error("Failed to record submission", error);
+    return errorResponse("database-error", 500);
+  }
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const userId = normalizeUserId(url.searchParams.get("userId"));
+  if (!userId) {
+    return errorResponse("invalid-user", 400);
+  }
+
+  const date = resolveBoardDate(url.searchParams.get("date"));
+
+  try {
+    const existing = await db.query.submissions.findFirst({
+      where: (fields, operators) =>
+        operators.and(operators.eq(fields.userId, userId), operators.eq(fields.date, date)),
+    });
+
+    if (!existing) {
+      const body: FetchSubmissionResponse = { status: "ok", date, submission: null };
+      return NextResponse.json(body, { status: 200 });
+    }
+
+    let parsedWords: string[];
+    try {
+      const parsed = JSON.parse(existing.words);
+      if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
+        throw new Error("Invalid submission words payload");
+      }
+      parsedWords = parsed;
+    } catch (error) {
+      console.warn("Invalid words payload for submission", { submissionId: existing.id, error });
+      const body: FetchSubmissionResponse = { status: "ok", date, submission: null };
+      return NextResponse.json(body, { status: 200 });
+    }
+
+    const body: FetchSubmissionResponse = {
+      status: "ok",
+      date,
+      submission: {
+        id: existing.id,
+        userId: existing.userId,
+        words: parsedWords,
+        score: existing.score,
+        createdAt: existing.createdAt instanceof Date ? existing.createdAt.toISOString() : null,
+      },
+    };
+
+    return NextResponse.json(body, { status: 200 });
+  } catch (error) {
+    console.error("Failed to fetch submission", error);
     return errorResponse("database-error", 500);
   }
 }

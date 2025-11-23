@@ -66,7 +66,7 @@ export default async function PlayPage() {
                 </div>
               </div>
 
-              <WordGrid board={boardData.board} />
+              <WordGrid board={boardData.board} date={boardData.date} />
 
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
                 <p className="font-semibold text-white">How scoring works</p>
