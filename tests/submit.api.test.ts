@@ -137,6 +137,82 @@ describe("POST /api/submit", () => {
     expect(secondJson.submission.score).toBe(7);
   });
 
+  it("stores progress per unique user so players resume their own boards", async () => {
+    const { POST } = await import("../app/api/submit/route");
+    const requestInit = {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    } satisfies RequestInit;
+
+    await POST(
+      new Request("http://localhost/api/submit", {
+        ...requestInit,
+        body: JSON.stringify({
+          userId: "alpha-player",
+          date: "2025-01-05",
+          words: ["alpha"],
+          score: 4,
+        }),
+      }),
+    );
+
+    await POST(
+      new Request("http://localhost/api/submit", {
+        ...requestInit,
+        body: JSON.stringify({
+          userId: "beta-player",
+          date: "2025-01-05",
+          words: ["beta"],
+          score: 6,
+        }),
+      }),
+    );
+
+    expect(storeState.records.size).toBe(2);
+    expect(storeState.records.get("alpha-player|2025-01-05")?.words).toBe('["alpha"]');
+    expect(storeState.records.get("beta-player|2025-01-05")?.words).toBe('["beta"]');
+  });
+
+  it("lets players return later and keep adding words to the same record", async () => {
+    const { POST } = await import("../app/api/submit/route");
+    const baseRequest = {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    } satisfies RequestInit;
+
+    const first = await POST(
+      new Request("http://localhost/api/submit", {
+        ...baseRequest,
+        body: JSON.stringify({
+          userId: "returning", // persist initial progress
+          date: "2025-01-06",
+          words: ["first"],
+          score: 4,
+        }),
+      }),
+    );
+
+    const firstJson = (await first.json()) as SubmitSuccessResponse;
+    expect(firstJson.submission.words).toEqual(["first"]);
+
+    const second = await POST(
+      new Request("http://localhost/api/submit", {
+        ...baseRequest,
+        body: JSON.stringify({
+          userId: "returning", // same user/date should update existing row
+          date: "2025-01-06",
+          words: ["first", "second"],
+          score: 11,
+        }),
+      }),
+    );
+
+    const secondJson = (await second.json()) as SubmitSuccessResponse;
+    expect(secondJson.submission.id).toBe(firstJson.submission.id);
+    expect(secondJson.submission.words).toEqual(["first", "second"]);
+    expect(storeState.records.get("returning|2025-01-06")?.words).toBe('["first","second"]');
+  });
+
   it("validates input payload", async () => {
     const { POST } = await import("../app/api/submit/route");
     const res = await POST(
