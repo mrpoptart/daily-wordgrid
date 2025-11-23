@@ -167,9 +167,15 @@ export async function GET(req: Request) {
 
     let parsedWords: string[];
     try {
-      parsedWords = JSON.parse(existing.words);
-    } catch {
-      return errorResponse("database-error", 500);
+      const parsed = JSON.parse(existing.words);
+      if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
+        throw new Error("Invalid submission words payload");
+      }
+      parsedWords = parsed;
+    } catch (error) {
+      console.warn("Invalid words payload for submission", { submissionId: existing.id, error });
+      const body: FetchSubmissionResponse = { status: "ok", date, submission: null };
+      return NextResponse.json(body, { status: 200 });
     }
 
     const body: FetchSubmissionResponse = {

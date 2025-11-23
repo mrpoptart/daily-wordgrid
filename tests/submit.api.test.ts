@@ -273,6 +273,26 @@ describe("POST /api/submit", () => {
     expect(json.submission).toBeNull();
   });
 
+  it("gracefully handles malformed words payloads", async () => {
+    const { GET } = await import("../app/api/submit/route");
+
+    storeState.records.set("broken|2025-03-02", {
+      id: 99,
+      userId: "broken",
+      date: "2025-03-02",
+      words: "{not-json}",
+      score: 0,
+      createdAt: new Date(),
+    });
+
+    const response = await GET(new Request("http://localhost/api/submit?userId=broken&date=2025-03-02"));
+    const json = (await response.json()) as FetchSubmissionResponse;
+
+    expect(response.status).toBe(200);
+    expect(json.status).toBe("ok");
+    expect(json.submission).toBeNull();
+  });
+
   it("validates input payload", async () => {
     const { POST } = await import("../app/api/submit/route");
     const res = await POST(
