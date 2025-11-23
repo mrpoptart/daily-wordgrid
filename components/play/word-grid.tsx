@@ -322,10 +322,14 @@ export function WordGrid({ board, date }: WordGridProps) {
     if (!userId) return;
 
     let isMounted = true;
+    const resolvedUserId = userId;
+    const resolvedDate = date;
 
     async function loadExistingSubmission() {
       try {
-        const response = await fetch(`/api/submit?userId=${encodeURIComponent(userId)}&date=${date}`);
+        const response = await fetch(
+          `/api/submit?userId=${encodeURIComponent(resolvedUserId)}&date=${encodeURIComponent(resolvedDate)}`,
+        );
         if (!response.ok) {
           throw new Error(`Failed to fetch existing submission: ${response.status}`);
         }
