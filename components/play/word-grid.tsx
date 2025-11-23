@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Board } from "@/lib/board/types";
 import type { Coord } from "@/lib/validation/adjacency";
@@ -27,10 +27,16 @@ function isSameCoord(a: Coord, b: Coord): boolean {
 export function WordGrid({ board }: WordGridProps) {
   const [path, setPath] = useState<Coord[]>([]);
   const [words, setWords] = useState<AddedWord[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<Status>({
     tone: "muted",
     message: "Tap adjacent letters to build a path.",
   });
+
+  const hasDraggedRef = useRef(false);
+  const latestPathRef = useRef<Coord[]>([]);
+  const pendingSubmitRef = useRef(false);
+  const skipClickRef = useRef(false);
 
   const currentWord = useMemo(() => assembleWord(board, path), [board, path]);
 
@@ -41,39 +47,16 @@ export function WordGrid({ board }: WordGridProps) {
 
   function resetPath(nextStatus?: Status) {
     setPath([]);
+    latestPathRef.current = [];
+    pendingSubmitRef.current = false;
+    hasDraggedRef.current = false;
+    skipClickRef.current = false;
     if (nextStatus) setStatus(nextStatus);
   }
 
-  function handleSelect(row: number, col: number) {
-    const next: Coord = [row, col];
-
-    if (path.length === 0) {
-      setPath([next]);
-      setStatus({ tone: "muted", message: "Keep tapping adjacent letters." });
-      return;
-    }
-
-    if (path.some((coord) => isSameCoord(coord, next))) {
-      setStatus({ tone: "error", message: "You already used that tile." });
-      return;
-    }
-
-    if (!areAdjacent(path[path.length - 1], next)) {
-      setStatus({ tone: "error", message: "Tiles must touch (including diagonals)." });
-      return;
-    }
-
-    setPath([...path, next]);
-    setStatus({ tone: "muted", message: "Nice—now add or keep extending." });
-  }
-
-  function handleUndo() {
-    setPath((prev) => prev.slice(0, -1));
-    setStatus({ tone: "muted", message: "Removed the last letter." });
-  }
-
-  function handleAddWord() {
-    const validation = validateWord(board, path);
+  function submitPath(targetPath: Coord[]) {
+    pendingSubmitRef.current = false;
+    const validation = validateWord(board, targetPath);
     if (!validation.ok) {
       if (validation.reason === "too-short") {
         setStatus({
@@ -103,7 +86,7 @@ export function WordGrid({ board }: WordGridProps) {
       return;
     }
 
-    const word = validation.word ?? assembleWord(board, path);
+    const word = validation.word ?? assembleWord(board, targetPath);
     const normalized = word.toLowerCase();
     if (words.some((entry) => entry.word.toLowerCase() === normalized)) {
       setStatus({ tone: "error", message: "You've already added that word today." });
@@ -114,6 +97,79 @@ export function WordGrid({ board }: WordGridProps) {
     setWords((prev) => [...prev, { word, score }]);
     resetPath({ tone: "success", message: `Added ${word} (+${score} pts).` });
   }
+
+  function handleSelect(row: number, col: number, options?: { autoSubmit?: boolean }) {
+    const next: Coord = [row, col];
+
+    if (path.length === 0) {
+      setPath([next]);
+      latestPathRef.current = [next];
+      setStatus({ tone: "muted", message: "Keep tapping adjacent letters." });
+      return;
+    }
+
+    const lastCoord = path[path.length - 1];
+    const shouldAutoSubmit = options?.autoSubmit === true;
+
+    if (isSameCoord(lastCoord, next)) {
+      latestPathRef.current = path;
+      if (shouldAutoSubmit) {
+        pendingSubmitRef.current = true;
+        if (path.length >= MIN_PATH_LENGTH) {
+          submitPath(path);
+        }
+      }
+      return;
+    }
+
+    if (path.some((coord) => isSameCoord(coord, next))) {
+      setStatus({ tone: "error", message: "You already used that tile." });
+      return;
+    }
+
+    if (!areAdjacent(lastCoord, next)) {
+      setStatus({ tone: "error", message: "Tiles must touch (including diagonals)." });
+      return;
+    }
+
+    const nextPath = [...path, next];
+    setPath(nextPath);
+    latestPathRef.current = nextPath;
+    setStatus({ tone: "muted", message: "Nice—now add or keep extending." });
+
+    if (shouldAutoSubmit) {
+      pendingSubmitRef.current = true;
+      if (nextPath.length >= MIN_PATH_LENGTH) {
+        submitPath(nextPath);
+      }
+    }
+  }
+
+  function handleUndo() {
+    setPath((prev) => prev.slice(0, -1));
+    setStatus({ tone: "muted", message: "Removed the last letter." });
+  }
+
+  function handleAddWord() {
+    submitPath(path);
+  }
+
+  useEffect(() => {
+    if (!pendingSubmitRef.current) return;
+    if (path.length < MIN_PATH_LENGTH) return;
+
+    pendingSubmitRef.current = false;
+    submitPath(path);
+  }, [path]);
+
+  useEffect(() => {
+    if (words.length === 0) return;
+
+    setPath([]);
+    latestPathRef.current = [];
+    hasDraggedRef.current = false;
+    skipClickRef.current = false;
+  }, [words.length]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.6fr,1fr]">
@@ -145,7 +201,34 @@ export function WordGrid({ board }: WordGridProps) {
                   aria-label={`Row ${rowIndex + 1}, Column ${colIndex + 1}: ${letter}${
                     isSelected ? " (selected)" : ""
                   }`}
-                  onClick={() => handleSelect(rowIndex, colIndex)}
+                  onPointerDown={() => {
+                    setIsDragging(true);
+                    hasDraggedRef.current = false;
+                    handleSelect(rowIndex, colIndex);
+                  }}
+                  onPointerEnter={() => {
+                    if (!isDragging) return;
+                    hasDraggedRef.current = true;
+                    handleSelect(rowIndex, colIndex);
+                  }}
+                  onPointerUp={() => {
+                    setIsDragging(false);
+                    pendingSubmitRef.current = true;
+                    const currentPath = latestPathRef.current;
+                    if (currentPath.length >= MIN_PATH_LENGTH) {
+                      submitPath(currentPath);
+                    }
+
+                    skipClickRef.current = true;
+                  }}
+                  onClick={() => {
+                    if (skipClickRef.current) {
+                      skipClickRef.current = false;
+                      return;
+                    }
+
+                    handleSelect(rowIndex, colIndex, { autoSubmit: true });
+                  }}
                   className={cn(
                     "flex h-14 w-14 items-center justify-center rounded-2xl border text-xl font-semibold tracking-[0.1em] transition",
                     "border-white/10 bg-white/5 text-white/90 hover:border-emerald-300/50 hover:bg-emerald-500/10",
