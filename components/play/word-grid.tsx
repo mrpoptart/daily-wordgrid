@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { Board } from "@/lib/board/types";
 import type { Coord } from "@/lib/validation/adjacency";
 import { areAdjacent } from "@/lib/validation/adjacency";
 import { scoreWordLength } from "@/lib/scoring";
-import { assembleWord, validateWord } from "@/lib/validation/words";
+import {
+  assembleWord,
+  findPathForWord,
+  validateWord,
+} from "@/lib/validation/words";
 import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
+import { Input } from "@/components/ui/input";
 
 export type WordGridProps = {
   board: Board;
@@ -29,6 +34,7 @@ export function WordGrid({ board }: WordGridProps) {
   const [words, setWords] = useState<AddedWord[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const pendingSubmitRef = useRef(false);
+  const [typedWord, setTypedWord] = useState("");
   const [status, setStatus] = useState<Status>({
     tone: "muted",
     message: "Tap adjacent letters to build a path.",
@@ -100,6 +106,10 @@ export function WordGrid({ board }: WordGridProps) {
   function handleSelect(row: number, col: number, options?: { autoSubmit?: boolean }) {
     const next: Coord = [row, col];
 
+    if (typedWord) {
+      setTypedWord("");
+    }
+
     if (path.length === 0) {
       setPath([next]);
       latestPathRef.current = [next];
@@ -156,6 +166,65 @@ export function WordGrid({ board }: WordGridProps) {
     submitPath(path);
   }
 
+  function handleTypedWordChange(value: string) {
+    setTypedWord(value);
+    const trimmed = value.trim();
+
+    if (trimmed === "") {
+      setPath([]);
+      latestPathRef.current = [];
+      updatePendingSubmit(false);
+      setStatus({ tone: "muted", message: "Tap adjacent letters to build a path." });
+      return;
+    }
+
+    const matchingPath = findPathForWord(board, trimmed);
+
+    if (matchingPath) {
+      setPath(matchingPath);
+      latestPathRef.current = matchingPath;
+      updatePendingSubmit(false);
+      setStatus({ tone: "muted", message: "Press Enter to submit this path." });
+      return;
+    }
+
+    setPath([]);
+    latestPathRef.current = [];
+    updatePendingSubmit(false);
+    setStatus({
+      tone: "error",
+      message: "No valid path for that sequence on the board.",
+    });
+  }
+
+  function handleTypedSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = typedWord.trim();
+
+    if (trimmed === "") {
+      setStatus({ tone: "error", message: "Type a word to submit." });
+      return;
+    }
+
+    const matchingPath = findPathForWord(board, trimmed);
+    if (!matchingPath) {
+      setStatus({
+        tone: "error",
+        message: "No valid path for that word on this board.",
+      });
+      setPath([]);
+      latestPathRef.current = [];
+      updatePendingSubmit(false);
+      return;
+    }
+
+    setPath(matchingPath);
+    latestPathRef.current = matchingPath;
+    updatePendingSubmit(false);
+    submitPath(matchingPath);
+    setTypedWord("");
+  }
+
   useEffect(() => {
     if (words.length === 0) return;
 
@@ -176,6 +245,27 @@ export function WordGrid({ board }: WordGridProps) {
             {path.length} / {MIN_PATH_LENGTH}+ letters
           </div>
         </div>
+
+        <form
+          onSubmit={handleTypedSubmit}
+          className="space-y-2 rounded-2xl border border-white/10 bg-slate-950/60 p-3"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <label className="text-sm font-semibold text-white" htmlFor="typed-word">
+              Type a word
+            </label>
+            <Input
+              id="typed-word"
+              value={typedWord}
+              onChange={(event) => handleTypedWordChange(event.target.value)}
+              placeholder="Highlight matching tiles as you type"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-xs text-slate-400">
+            Letters highlight when a valid path exists. Press Enter to submit the word.
+          </p>
+        </form>
 
         <div
           role="grid"
