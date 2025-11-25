@@ -29,5 +29,3 @@ jobs:
 
       - name: Run database migrations
         run: npm run db:migrate
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
