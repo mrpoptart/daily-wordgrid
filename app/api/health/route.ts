@@ -1,30 +1,32 @@
 import { NextResponse } from "next/server";
-import { pb } from "@/lib/pocketbase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export type HealthResponse = {
   status: "ok";
   env: {
-    hasPocketBaseUrl: boolean;
-    pocketBaseHealth: boolean;
+    hasSupabaseUrl: boolean;
+    supabaseHealth: boolean;
     vercelEnv: string | null;
     hasVercelUrl: boolean;
   };
 };
 
 export async function GET() {
-  const hasPocketBaseUrl = Boolean(
-    process.env.NEXT_PUBLIC_POCKETBASE_URL &&
-      process.env.NEXT_PUBLIC_POCKETBASE_URL.trim()
+  const hasSupabaseUrl = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL.trim()
   );
 
-  let pocketBaseHealth = false;
+  let supabaseHealth = false;
   try {
-      const health = await pb.health.check();
-      if (health.code === 200) {
-          pocketBaseHealth = true;
+      // Simple query to check connection
+      // We check for count of games, or just head check if possible
+      const { error } = await supabaseAdmin.from('games').select('date', { count: 'exact', head: true });
+      if (!error) {
+          supabaseHealth = true;
       }
   } catch (e) {
-      console.error("PocketBase health check failed", e);
+      console.error("Supabase health check failed", e);
   }
 
   const vercelEnv = process.env.VERCEL_ENV ?? null;
@@ -35,8 +37,8 @@ export async function GET() {
   const body: HealthResponse = {
     status: "ok",
     env: {
-      hasPocketBaseUrl,
-      pocketBaseHealth,
+      hasSupabaseUrl,
+      supabaseHealth,
       vercelEnv,
       hasVercelUrl,
     },

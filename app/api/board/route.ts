@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
-import { pb } from "@/lib/pocketbase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateBoardForDate } from "@/lib/board/generate";
 import type { Board, BoardRow } from "@/lib/board/types";
 import {
@@ -31,35 +31,45 @@ export async function GET(req?: Request) {
   let letters: string;
 
   try {
-    // Try to fetch existing game from PocketBase
-    // Filter by date. Assuming collection 'games' exists.
-    const record = await pb.collection('games').getFirstListItem(`date="${date}"`);
-    letters = record.letters;
-    // Reconstruct board from letters
-    // Assuming 5x5
-    const rows: BoardRow[] = [];
-    for (let i = 0; i < 5; i++) {
-        const rowSlice = letters.slice(i * 5, (i + 1) * 5).split('');
-        if (rowSlice.length === 5) {
-             rows.push(rowSlice as BoardRow);
+    // Try to fetch existing game from Supabase
+    const { data: record, error } = await supabaseAdmin
+      .from('games')
+      .select('*')
+      .eq('date', date)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is no rows found
+        console.error("Failed to fetch game from Supabase", error);
+        throw error;
+    }
+
+    if (record) {
+        letters = record.letters;
+        // Reconstruct board from letters
+        // Assuming 5x5
+        const rows: BoardRow[] = [];
+        for (let i = 0; i < 5; i++) {
+            const rowSlice = letters.slice(i * 5, (i + 1) * 5).split('');
+            if (rowSlice.length === 5) {
+                 rows.push(rowSlice as BoardRow);
+            }
         }
-    }
-    if (rows.length === 5) {
-        board = rows as Board;
+        if (rows.length === 5) {
+            board = rows as Board;
+        } else {
+            throw new Error("Invalid board data");
+        }
     } else {
-        throw new Error("Invalid board data");
+        throw new Error("Not found");
     }
+
   } catch (err: unknown) {
-      const error = err as { status?: number };
-      if (error.status !== 404) {
-          console.error("Failed to fetch game from PocketBase", error);
-      }
       // If not found, generate and try to save
       board = generateBoardForDate(date, salt);
       letters = flattenBoard(board);
 
       try {
-        await pb.collection('games').create({
+        await supabaseAdmin.from('games').insert({
             date,
             letters,
             seed
