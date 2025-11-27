@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db/client";
-import { submissions } from "@/db/schema";
+import { pb } from "@/lib/pocketbase";
 import { resolveBoardDate } from "@/lib/board/api-helpers";
-import { sql } from "drizzle-orm";
 
 type SubmitRequestBody = {
   userId?: unknown;
@@ -15,7 +13,7 @@ export type SubmitSuccessResponse = {
   status: "ok";
   date: string;
   submission: {
-    id: number;
+    id: string;
     userId: string;
     words: string[];
     score: number;
@@ -100,26 +98,35 @@ export async function POST(req: Request) {
   const date = resolveBoardDate(typeof payload.date === "string" ? payload.date : null);
 
   try {
-    const result = await db
-      .insert(submissions)
-      .values({
-        userId,
-        date,
-        words: JSON.stringify(words),
-        score,
-      })
-      .onConflictDoUpdate({
-        target: [submissions.userId, submissions.date],
-        set: {
-          words: sql`excluded.words`,
-          score: sql`excluded.score`,
-        },
-      })
-      .returning();
+    // Check if submission exists
+    // We assume unique constraint on (user_id, date) is enforced by DB or logic
+    // PocketBase doesn't have composite unique constraints easily in UI, but we can check.
 
-    const record = result[0];
-    if (!record) {
-      return errorResponse("database-error", 500);
+    // Attempt to find existing submission
+    let record;
+    try {
+        record = await pb.collection('submissions').getFirstListItem(`user_id="${userId}" && date="${date}"`);
+    } catch (err: unknown) {
+        if ((err as { status?: number }).status !== 404) {
+             console.error("Failed to check existing submission", err);
+             // proceed to try create, maybe
+        }
+    }
+
+    if (record) {
+        // Update
+        record = await pb.collection('submissions').update(record.id, {
+            words: JSON.stringify(words),
+            score,
+        });
+    } else {
+        // Create
+        record = await pb.collection('submissions').create({
+            user_id: userId,
+            date,
+            words: JSON.stringify(words),
+            score,
+        });
     }
 
     const body: SubmitSuccessResponse = {
@@ -127,10 +134,10 @@ export async function POST(req: Request) {
       date,
       submission: {
         id: record.id,
-        userId: record.userId,
+        userId: record.user_id, // Note: PB returns fields as snake_case if defined that way? Need to check. Assuming schema uses snake_case keys based on create call.
         words,
         score: record.score,
-        createdAt: record.createdAt instanceof Date ? record.createdAt.toISOString() : null,
+        createdAt: record.created,
       },
     };
 

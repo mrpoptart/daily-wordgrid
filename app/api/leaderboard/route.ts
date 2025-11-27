@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db/client";
-import { submissions } from "@/db/schema";
+import { pb } from "@/lib/pocketbase";
 import { resolveBoardDate } from "@/lib/board/api-helpers";
-import { asc, desc, eq, sql } from "drizzle-orm";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 50;
@@ -137,25 +135,16 @@ export async function GET(req?: Request) {
   }
 
   try {
-    const rows = await db
-      .select({
-        id: submissions.id,
-        userId: submissions.userId,
-        score: submissions.score,
-        words: submissions.words,
-        createdAt: submissions.createdAt,
-      })
-      .from(submissions)
-      .where(eq(submissions.date, date))
-      .orderBy(desc(submissions.score), asc(submissions.createdAt), asc(submissions.id))
-      .limit(limit);
+    // Fetch submissions for the date
+    // Sort by score (desc), created (asc)
+    const records = await pb.collection('submissions').getList(1, limit, {
+        filter: `date="${date}"`,
+        sort: '-score,+created',
+    });
 
-    const totals = await db
-      .select({ value: sql<number>`cast(count(*) as integer)` })
-      .from(submissions)
-      .where(eq(submissions.date, date));
-
-    const totalPlayers = totals[0]?.value ?? 0;
+    // In PocketBase getList returns items and totalItems (count)
+    const totalPlayers = records.totalItems;
+    const rows = records.items;
 
     let lastRank = 0;
     let lastScore: number | null = null;
@@ -169,10 +158,10 @@ export async function GET(req?: Request) {
 
       return {
         rank,
-        userId: normalizeUserId(row.userId),
+        userId: normalizeUserId(row.user_id),
         score: normalizedScore,
         words: parseWordsField(row.words),
-        submittedAt: formatSubmittedAt(row.createdAt),
+        submittedAt: formatSubmittedAt(row.created),
       };
     });
 
