@@ -1,9 +1,7 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LoginRedirectHandler } from "@/components/auth/login-redirect-handler";
 import { Button } from "@/components/ui/button";
 import { fetchBoard } from "@/lib/board/fetch";
-import { hasSupabaseSessionCookie } from "@/lib/supabase/session";
 import { WordGrid } from "@/components/play/word-grid";
 
 export const metadata = {
@@ -12,9 +10,9 @@ export const metadata = {
 };
 
 export default async function PlayPage() {
-  if (!(await hasSupabaseSessionCookie())) {
-    redirect("/login");
-  }
+  // Client-side auth check is better for PocketBase in this context, or use middleware
+  // For now, removing the server-side redirect based on session cookie
+  // We can add a client-side component to check auth status and redirect if needed
 
   const boardData = await fetchBoard();
 
@@ -89,4 +87,3 @@ export default async function PlayPage() {
     </div>
   );
 }
-

@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { buildSupabaseAuthorizeUrl, sendSupabaseMagicLink } from "@/lib/supabase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { pb } from "@/lib/pocketbase";
 
 const STATUS_MESSAGES = {
   idle: "Enter your email to receive a magic link.",
@@ -25,10 +25,11 @@ type FormState = keyof typeof STATUS_MESSAGES | "error";
 export function LoginCard({
   className,
   title = "Log in",
-  description = "Use a Supabase magic link to start playing.",
+  description = "Use PocketBase Auth to start playing.",
   redirectPath = "/",
 }: LoginCardProps) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string>("");
 
@@ -37,8 +38,8 @@ export function LoginCard({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!email) {
-      setError("Please enter your email address.");
+    if (!email || !password) {
+      setError("Please enter your email and password.");
       setState("error");
       return;
     }
@@ -46,13 +47,16 @@ export function LoginCard({
     try {
       setState("loading");
       setError("");
-      await sendSupabaseMagicLink({
-        email,
-        redirectTo: typeof window !== "undefined" ? `${window.location.origin}${redirectPath}` : undefined,
-      });
+
+      await pb.collection("users").authWithPassword(email, password);
+
       setState("success");
+      // Redirect or refresh
+      if (typeof window !== "undefined") {
+        window.location.href = redirectPath;
+      }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "We couldn't start the login flow. Try again in a moment.");
+      setError(cause instanceof Error ? cause.message : "We couldn't log you in. Try again in a moment.");
       setState("error");
     }
   }
@@ -62,10 +66,15 @@ export function LoginCard({
       setState("oauth");
       setError("");
 
-      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}${redirectPath}` : undefined;
-      const authorizeUrl = buildSupabaseAuthorizeUrl({ provider: "google", redirectTo });
+      pb.collection("users").authWithOAuth2({ provider: "google" }).then(() => {
+          if (typeof window !== "undefined") {
+            window.location.href = redirectPath;
+          }
+      }).catch(cause => {
+          setError(cause instanceof Error ? cause.message : "We couldn't start Google login. Please try again.");
+          setState("error");
+      });
 
-      window.location.assign(authorizeUrl);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "We couldn't start Google login. Please try again.");
       setState("error");
@@ -75,7 +84,7 @@ export function LoginCard({
   return (
     <div className={cn("rounded-3xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-emerald-500/10", className)}>
       <div className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">Supabase Auth</p>
+        <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">PocketBase Auth</p>
         <h1 className="text-3xl font-semibold text-white">{title}</h1>
         <p className="text-sm text-slate-300">{description}</p>
       </div>
@@ -94,9 +103,22 @@ export function LoginCard({
             required
           />
         </label>
+        <label className="space-y-2 text-sm font-medium text-slate-200" htmlFor="password">
+          Password
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            disabled={isDisabled}
+            required
+          />
+        </label>
 
         <Button type="submit" className="w-full" disabled={isDisabled}>
-          {state === "loading" ? "Sending magic link..." : "Send magic link"}
+          {state === "loading" ? "Logging in..." : "Log in"}
         </Button>
       </form>
 

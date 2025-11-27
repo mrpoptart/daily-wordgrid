@@ -1,19 +1,32 @@
 import { NextResponse } from "next/server";
+import { pb } from "@/lib/pocketbase";
 
 export type HealthResponse = {
   status: "ok";
   env: {
-    hasSupabaseUrl: boolean;
+    hasPocketBaseUrl: boolean;
+    pocketBaseHealth: boolean;
     vercelEnv: string | null;
     hasVercelUrl: boolean;
   };
 };
 
 export async function GET() {
-  const hasSupabaseUrl = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL.trim()
+  const hasPocketBaseUrl = Boolean(
+    process.env.NEXT_PUBLIC_POCKETBASE_URL &&
+      process.env.NEXT_PUBLIC_POCKETBASE_URL.trim()
   );
+
+  let pocketBaseHealth = false;
+  try {
+      const health = await pb.health.check();
+      if (health.code === 200) {
+          pocketBaseHealth = true;
+      }
+  } catch (e) {
+      console.error("PocketBase health check failed", e);
+  }
+
   const vercelEnv = process.env.VERCEL_ENV ?? null;
   const hasVercelUrl = Boolean(
     process.env.VERCEL_URL && process.env.VERCEL_URL.trim()
@@ -22,7 +35,8 @@ export async function GET() {
   const body: HealthResponse = {
     status: "ok",
     env: {
-      hasSupabaseUrl,
+      hasPocketBaseUrl,
+      pocketBaseHealth,
       vercelEnv,
       hasVercelUrl,
     },

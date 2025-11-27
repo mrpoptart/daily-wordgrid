@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { LoginRedirectHandler } from "@/components/auth/login-redirect-handler";
 import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
-import { hasSupabaseSessionCookie } from "@/lib/supabase/session";
 
 const README_URL = "https://github.com/mrpoptart/daily-wordgrid#readme";
 const LOGIN_URL = "/login";
@@ -31,8 +29,8 @@ const FEATURES = [
 
 const FLOW = [
   {
-    title: "Log in with Supabase Auth",
-    detail: "Lightweight email magic links keep onboarding under 30 seconds.",
+    title: "Log in with PocketBase Auth",
+    detail: "Simple email/password or OAuth login.",
   },
   {
     title: "Study today's deterministic board",
@@ -53,9 +51,8 @@ const SCORING = [
 ] as const;
 
 export default async function Home() {
-  if (await hasSupabaseSessionCookie()) {
-    redirect("/play");
-  }
+  // We handle redirection in client component or check cookie/header if possible
+  // For now, removing SSR session check as PB is mostly client-side auth
 
   return (
     <div className="bg-slate-950 text-slate-100">
