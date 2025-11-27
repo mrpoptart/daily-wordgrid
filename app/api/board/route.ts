@@ -63,7 +63,7 @@ export async function GET(req?: Request) {
         throw new Error("Not found");
     }
 
-  } catch (err: unknown) {
+  } catch {
       // If not found, generate and try to save
       board = generateBoardForDate(date, salt);
       letters = flattenBoard(board);
