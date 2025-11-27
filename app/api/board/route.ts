@@ -1,9 +1,8 @@
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
-import { db } from "@/db/client";
-import { games } from "@/db/schema";
+import { pb } from "@/lib/pocketbase";
 import { generateBoardForDate } from "@/lib/board/generate";
-import type { Board } from "@/lib/board/types";
+import type { Board, BoardRow } from "@/lib/board/types";
 import {
   flattenBoard,
   resolveBoardDate,
@@ -28,19 +27,48 @@ export async function GET(req?: Request) {
   const { salt, hasDailySalt } = resolveDailySalt();
   const seed = createHash("sha256").update(`${date}|${salt}`).digest("hex");
 
-  const board = generateBoardForDate(date, salt);
-  const letters = flattenBoard(board);
+  let board: Board;
+  let letters: string;
 
   try {
-    await db
-      .insert(games)
-      .values({ date, letters, seed })
-      .onConflictDoUpdate({
-        target: games.date,
-        set: { letters, seed },
-      });
-  } catch (error) {
-    console.error("Failed to persist daily board", error);
+    // Try to fetch existing game from PocketBase
+    // Filter by date. Assuming collection 'games' exists.
+    const record = await pb.collection('games').getFirstListItem(`date="${date}"`);
+    letters = record.letters;
+    // Reconstruct board from letters
+    // Assuming 5x5
+    const rows: BoardRow[] = [];
+    for (let i = 0; i < 5; i++) {
+        const rowSlice = letters.slice(i * 5, (i + 1) * 5).split('');
+        if (rowSlice.length === 5) {
+             rows.push(rowSlice as BoardRow);
+        }
+    }
+    if (rows.length === 5) {
+        board = rows as Board;
+    } else {
+        throw new Error("Invalid board data");
+    }
+  } catch (err: unknown) {
+      const error = err as { status?: number };
+      if (error.status !== 404) {
+          console.error("Failed to fetch game from PocketBase", error);
+      }
+      // If not found, generate and try to save
+      board = generateBoardForDate(date, salt);
+      letters = flattenBoard(board);
+
+      try {
+        await pb.collection('games').create({
+            date,
+            letters,
+            seed
+        });
+      } catch (createError: unknown) {
+        // If create fails (e.g. duplicate because of race condition), ignore or log
+        // If it's a unique constraint violation, it means another request created it, which is fine.
+        console.error("Failed to persist daily board", createError);
+      }
   }
 
   const body: BoardResponse = {
