@@ -6,6 +6,7 @@ import type {
 import { LeaderboardContent, LeaderboardUnavailableState } from "@/components/leaderboard/leaderboard-states";
 import { LeaderboardHeader } from "@/components/leaderboard/leaderboard-header";
 import { LeaderboardSummary } from "@/components/leaderboard/leaderboard-summary";
+import { UserLastLoginUpdater } from "@/components/auth/user-last-login-updater";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,7 @@ export default async function LeaderboardPage({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <UserLastLoginUpdater />
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-16 lg:px-10">
         <LeaderboardHeader />
 
