@@ -28,8 +28,8 @@ const FEATURES = [
 
 const FLOW = [
   {
-    title: "Log in with PocketBase Auth",
-    detail: "Simple email/password or OAuth login.",
+    title: "Log in with Supabase Auth",
+    detail: "Magic link or Google OAuth login.",
   },
   {
     title: "Study today's deterministic board",
@@ -51,7 +51,7 @@ const SCORING = [
 
 export default async function Home() {
   // We handle redirection in client component or check cookie/header if possible
-  // For now, removing SSR session check as PB is mostly client-side auth
+  // For now, removing SSR session check as auth is mostly client-side
 
   return (
     <div className="bg-slate-950 text-slate-100">

@@ -8,9 +8,9 @@ import { supabase } from "@/lib/supabase";
 
 const STATUS_MESSAGES = {
   idle: "Enter your email to receive a magic link.",
-  loading: "Logging in...",
+  loading: "Sending magic link...",
   oauth: "Redirecting to Google...",
-  success: "Login successful!",
+  success: "Check your email for the magic link!",
 } as const;
 
 type LoginCardProps = {
@@ -29,17 +29,16 @@ export function LoginCard({
   redirectPath = "/",
 }: LoginCardProps) {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string>("");
 
-  const isDisabled = state === "loading" || state === "oauth";
+  const isDisabled = state === "loading" || state === "oauth" || state === "success";
   const statusMessage = state === "error" ? error : STATUS_MESSAGES[state];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!email || !password) {
-      setError("Please enter your email and password.");
+    if (!email) {
+      setError("Please enter your email.");
       setState("error");
       return;
     }
@@ -48,20 +47,18 @@ export function LoginCard({
       setState("loading");
       setError("");
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithOtp({
         email,
-        password,
+        options: {
+          emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}${redirectPath}` : undefined,
+        },
       });
 
       if (error) throw error;
 
       setState("success");
-      // Redirect or refresh
-      if (typeof window !== "undefined") {
-        window.location.href = redirectPath;
-      }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "We couldn't log you in. Try again in a moment.");
+      setError(cause instanceof Error ? cause.message : "We couldn't send the magic link. Try again in a moment.");
       setState("error");
     }
   }
@@ -74,7 +71,7 @@ export function LoginCard({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}${redirectPath}` : undefined
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}${redirectPath}` : undefined
         }
       });
 
@@ -108,22 +105,9 @@ export function LoginCard({
             required
           />
         </label>
-        <label className="space-y-2 text-sm font-medium text-slate-200" htmlFor="password">
-          Password
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            disabled={isDisabled}
-            required
-          />
-        </label>
 
         <Button type="submit" className="w-full" disabled={isDisabled}>
-          {state === "loading" ? "Logging in..." : "Log in"}
+          {state === "loading" ? "Sending..." : "Send Magic Link"}
         </Button>
       </form>
 
@@ -139,7 +123,7 @@ export function LoginCard({
         </Button>
       </div>
 
-      <p className={cn("mt-4 text-sm", state === "error" ? "text-red-300" : "text-slate-300")}>{statusMessage}</p>
+      <p className={cn("mt-4 text-sm", state === "error" ? "text-red-300" : state === "success" ? "text-emerald-300" : "text-slate-300")}>{statusMessage}</p>
     </div>
   );
 }

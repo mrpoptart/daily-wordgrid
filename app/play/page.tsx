@@ -8,8 +8,10 @@ export const metadata = {
   description: "View the deterministic 5×5 board for today's puzzle.",
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function PlayPage() {
-  // Client-side auth check is better for PocketBase in this context, or use middleware
+  // Client-side auth check is better for Supabase in this context, or use middleware
   // For now, removing the server-side redirect based on session cookie
   // We can add a client-side component to check auth status and redirect if needed
 
