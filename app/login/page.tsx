@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "Log in • Daily Wordgrid",
-  description: "Log in with PocketBase to play today's board.",
+  description: "Log in with Supabase to play today's board.",
 };
 
 export default function LoginPage() {
@@ -18,7 +18,7 @@ export default function LoginPage() {
           <div className="space-y-4">
             <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Log in to play</h1>
             <p className="text-lg leading-relaxed text-slate-300 sm:text-xl">
-              We use PocketBase Auth. Enter your email and password to log in.
+              Enter your email to receive a magic link, or continue with Google.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
@@ -33,8 +33,8 @@ export default function LoginPage() {
 
           <div className="flex-1 w-full max-w-md">
             <LoginCard
-              title="Sign in with email"
-              description="Enter your PocketBase credentials."
+              title="Sign in"
+              description="Use your email for a magic link."
               redirectPath="/"
             />
           </div>
