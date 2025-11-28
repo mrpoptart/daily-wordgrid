@@ -30,7 +30,7 @@ const heatBoard: Board = [
 
 describe("WordGrid", () => {
   it("lets players tap adjacent letters to add a word", async () => {
-    render(<WordGrid board={testBoard} />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
     const [first, second, third, fourth] = screen.getAllByRole("button", {
       name: /row 1, column [1-4]:/i,
@@ -55,7 +55,7 @@ describe("WordGrid", () => {
   });
 
   it("supports dragging to select a path", () => {
-    render(<WordGrid board={testBoard} />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
     const first = screen.getAllByRole("button", { name: /row 1, column 1: t/i })[0];
     const second = screen.getAllByRole("button", { name: /row 1, column 2: e/i })[0];
@@ -72,7 +72,7 @@ describe("WordGrid", () => {
   });
 
   it("taps the last letter twice to submit and clear the selection", async () => {
-    render(<WordGrid board={testBoard} />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
     const first = screen.getAllByRole("button", { name: /row 1, column 1: t/i })[0];
     const second = screen.getAllByRole("button", { name: /row 1, column 2: e/i })[0];
@@ -104,7 +104,7 @@ describe("WordGrid", () => {
   });
 
   it("requires tapping the last letter twice before submitting", async () => {
-    render(<WordGrid board={testBoard} />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
     const first = screen.getAllByRole("button", { name: /row 1, column 1: t/i })[0];
     const second = screen.getAllByRole("button", { name: /row 1, column 2: e/i })[0];
@@ -131,7 +131,7 @@ describe("WordGrid", () => {
   });
 
   it("only submits after a second tap on the final tile during tap flows", async () => {
-    render(<WordGrid board={heatBoard} />);
+    render(<WordGrid board={heatBoard} boardDate="2024-01-01" />);
 
     const first = screen.getAllByRole("button", { name: /row 1, column 1: h/i })[0];
     const second = screen.getAllByRole("button", { name: /row 1, column 2: e/i })[0];
@@ -158,7 +158,7 @@ describe("WordGrid", () => {
   });
 
   it("allows the add button to submit after arming the last tile", async () => {
-    render(<WordGrid board={heatBoard} />);
+    render(<WordGrid board={heatBoard} boardDate="2024-01-01" />);
 
     const first = screen.getAllByRole("button", { name: /row 1, column 1: h/i })[0];
     const second = screen.getAllByRole("button", { name: /row 1, column 2: e/i })[0];
@@ -185,7 +185,7 @@ describe("WordGrid", () => {
   });
 
   it("highlights a matching path while typing and submits on enter", async () => {
-    render(<WordGrid board={testBoard} />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
     const input = screen.getByLabelText(/type a word/i);
 
@@ -210,7 +210,7 @@ describe("WordGrid", () => {
   });
 
   it("shows errors when the typed word cannot be formed", async () => {
-    render(<WordGrid board={testBoard} />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
     const input = screen.getByLabelText(/type a word/i);
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import type { Board } from "@/lib/board/types";
 import type { Coord } from "@/lib/validation/adjacency";
 import { areAdjacent } from "@/lib/validation/adjacency";
@@ -16,6 +17,7 @@ import { Input } from "@/components/ui/input";
 
 export type WordGridProps = {
   board: Board;
+  boardDate: string;
 };
 
 type Status =
@@ -29,7 +31,7 @@ function isSameCoord(a: Coord, b: Coord): boolean {
   return a[0] === b[0] && a[1] === b[1];
 }
 
-export function WordGrid({ board }: WordGridProps) {
+export function WordGrid({ board, boardDate }: WordGridProps) {
   const [path, setPath] = useState<Coord[]>([]);
   const [words, setWords] = useState<AddedWord[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -99,6 +101,30 @@ export function WordGrid({ board }: WordGridProps) {
     }
 
     const score = scoreWordLength(word.length);
+
+    // If this is the first word, track that the user started the board
+    if (words.length === 0) {
+      supabase.auth.getUser().then(({ data }) => {
+        if (data.user) {
+          supabase
+            .from("daily_boards")
+            .upsert(
+              {
+                user_id: data.user.id,
+                board_date: boardDate,
+                board_started: new Date().toISOString(),
+              },
+              { onConflict: "user_id, board_date", ignoreDuplicates: true },
+            )
+            .then(({ error }) => {
+              if (error) {
+                console.error("Failed to track board start:", error);
+              }
+            });
+        }
+      });
+    }
+
     setWords((prev) => [...prev, { word, score }]);
     resetPath({ tone: "success", message: `Added ${word} (+${score} pts).` });
   }
