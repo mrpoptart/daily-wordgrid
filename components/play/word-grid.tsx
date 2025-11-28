@@ -34,11 +34,13 @@ function isSameCoord(a: Coord, b: Coord): boolean {
 export function WordGrid({ board, boardDate }: WordGridProps) {
   const [path, setPath] = useState<Coord[]>([]);
   const [words, setWords] = useState<AddedWord[]>([]);
+  const [boardStartedAt, setBoardStartedAt] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
+        // Fetch words
         supabase
           .from("words")
           .select("word, score, created_at")
@@ -74,9 +76,23 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
               });
             }
           });
+
+        // Fetch board start time
+        supabase
+          .from("daily_boards")
+          .select("board_started")
+          .eq("user_id", data.user.id)
+          .eq("board_date", boardDate)
+          .single()
+          .then(({ data: boardData }) => {
+            if (boardData) {
+              setBoardStartedAt(boardData.board_started);
+            }
+          });
       }
     });
   }, [boardDate]);
+
   const pendingSubmitRef = useRef(false);
   const [typedWord, setTypedWord] = useState("");
   const [status, setStatus] = useState<Status>({
@@ -96,6 +112,34 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     () => words.reduce((sum, entry) => sum + entry.score, 0),
     [words],
   );
+
+  const { first5MinWords, after5MinWords } = useMemo(() => {
+    // If we don't know when the board started yet, treat all words as "within 5 mins" (or just show them)
+    // Actually, if boardStartedAt is null, we can't really split. But usually words > 0 implies boardStartedAt exists.
+    // We'll return all in first bucket if boardStartedAt is missing.
+    if (!boardStartedAt) {
+      return { first5MinWords: words, after5MinWords: [] };
+    }
+
+    const startTime = new Date(boardStartedAt).getTime();
+    const cutoff = startTime + 5 * 60 * 1000;
+
+    const first: AddedWord[] = [];
+    const after: AddedWord[] = [];
+
+    words.forEach((w) => {
+      // If timestamp is missing for some reason, default to 0 (old) which is likely wrong if board started recently.
+      // But purely optimistic words have timestamp = now. Fetched words have created_at.
+      const t = w.timestamp ? new Date(w.timestamp).getTime() : 0;
+      if (t <= cutoff) {
+        first.push(w);
+      } else {
+        after.push(w);
+      }
+    });
+
+    return { first5MinWords: first, after5MinWords: after };
+  }, [words, boardStartedAt]);
 
   function resetPath(nextStatus?: Status) {
     setPath([]);
@@ -143,22 +187,28 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     }
 
     const score = scoreWordLength(word.length);
+    const now = new Date().toISOString();
 
     // Optimistic update
-    setWords((prev) => [...prev, { word, score, timestamp: new Date().toISOString() }]);
+    setWords((prev) => [...prev, { word, score, timestamp: now }]);
     resetPath({ tone: "success", message: `Added ${word} (+${score} pts).` });
 
     // Background save
     const { data } = await supabase.auth.getUser();
     if (data.user) {
       if (words.length === 0) {
+        // Optimistically set boardStartedAt if not already set
+        if (!boardStartedAt) {
+          setBoardStartedAt(now);
+        }
+
         supabase
           .from("daily_boards")
           .upsert(
             {
               user_id: data.user.id,
               board_date: boardDate,
-              board_started: new Date().toISOString(),
+              board_started: now,
             },
             { onConflict: "user_id, board_date", ignoreDuplicates: true },
           )
@@ -466,17 +516,51 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
             Added words will appear here with their point values.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {words.map((entry) => (
-              <li
-                key={entry.word}
-                className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-white"
-              >
-                <span className="font-semibold uppercase tracking-[0.2em]">{entry.word}</span>
-                <span className="text-sm text-emerald-200">+{entry.score} pts</span>
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-6">
+            {first5MinWords.length > 0 && (
+              <div className="space-y-2">
+                {after5MinWords.length > 0 && (
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Within 5 minutes
+                  </p>
+                )}
+                <ul className="space-y-2">
+                  {first5MinWords.map((entry) => (
+                    <li
+                      key={entry.word}
+                      className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-white"
+                    >
+                      <span className="font-semibold uppercase tracking-[0.2em]">{entry.word}</span>
+                      <span className="text-sm text-emerald-200">+{entry.score} pts</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {after5MinWords.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  After 5 minutes
+                </p>
+                <ul className="space-y-2">
+                  {after5MinWords.map((entry) => (
+                    <li
+                      key={entry.word}
+                      className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-white opacity-80"
+                    >
+                      <span className="font-semibold uppercase tracking-[0.2em]">{entry.word}</span>
+                      <span className="text-sm text-emerald-200">+{entry.score} pts</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Fallback if logic is weird and we have words but they didn't land in either somehow,
+                though strict logic makes that impossible as cutoff is number.
+                But if boardStartedAt is null, all go to first5MinWords. */}
+          </div>
         )}
       </div>
     </div>
