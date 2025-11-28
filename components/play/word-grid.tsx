@@ -25,7 +25,7 @@ type Status =
   | { tone: "error"; message: string }
   | { tone: "success"; message: string };
 
-type AddedWord = { word: string; score: number };
+type AddedWord = { word: string; score: number; timestamp?: string };
 
 function isSameCoord(a: Coord, b: Coord): boolean {
   return a[0] === b[0] && a[1] === b[1];
@@ -35,6 +35,48 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [path, setPath] = useState<Coord[]>([]);
   const [words, setWords] = useState<AddedWord[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        supabase
+          .from("words")
+          .select("word, score, created_at")
+          .eq("user_id", data.user.id)
+          .eq("board_date", boardDate)
+          .order("created_at", { ascending: true })
+          .then(({ data: fetchedWords, error }) => {
+            if (error) {
+              console.error("Failed to fetch words:", error);
+              return;
+            }
+            if (fetchedWords) {
+              setWords((prev) => {
+                // Merge fetched words with existing state to avoid overwriting user progress
+                // Create a map of existing words for quick lookup
+                const existingMap = new Map(
+                  prev.map((w) => [w.word.toLowerCase(), w]),
+                );
+
+                // Add all fetched words
+                fetchedWords.forEach((fw) => {
+                  if (!existingMap.has(fw.word.toLowerCase())) {
+                    existingMap.set(fw.word.toLowerCase(), {
+                      word: fw.word,
+                      score: fw.score,
+                      timestamp: fw.created_at,
+                    });
+                  }
+                });
+
+                // Convert back to array
+                return Array.from(existingMap.values());
+              });
+            }
+          });
+      }
+    });
+  }, [boardDate]);
   const pendingSubmitRef = useRef(false);
   const [typedWord, setTypedWord] = useState("");
   const [status, setStatus] = useState<Status>({
@@ -62,7 +104,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     if (nextStatus) setStatus(nextStatus);
   }
 
-  function submitPath(targetPath: Coord[]) {
+  async function submitPath(targetPath: Coord[]) {
     const validation = validateWord(board, targetPath);
     if (!validation.ok) {
       if (validation.reason === "too-short") {
@@ -102,31 +144,48 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
     const score = scoreWordLength(word.length);
 
-    // If this is the first word, track that the user started the board
-    if (words.length === 0) {
-      supabase.auth.getUser().then(({ data }) => {
-        if (data.user) {
-          supabase
-            .from("daily_boards")
-            .upsert(
-              {
-                user_id: data.user.id,
-                board_date: boardDate,
-                board_started: new Date().toISOString(),
-              },
-              { onConflict: "user_id, board_date", ignoreDuplicates: true },
-            )
-            .then(({ error }) => {
-              if (error) {
-                console.error("Failed to track board start:", error);
-              }
-            });
-        }
-      });
-    }
-
-    setWords((prev) => [...prev, { word, score }]);
+    // Optimistic update
+    setWords((prev) => [...prev, { word, score, timestamp: new Date().toISOString() }]);
     resetPath({ tone: "success", message: `Added ${word} (+${score} pts).` });
+
+    // Background save
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      if (words.length === 0) {
+        supabase
+          .from("daily_boards")
+          .upsert(
+            {
+              user_id: data.user.id,
+              board_date: boardDate,
+              board_started: new Date().toISOString(),
+            },
+            { onConflict: "user_id, board_date", ignoreDuplicates: true },
+          )
+          .then(({ error }) => {
+            if (error) {
+              console.error("Failed to track board start:", error);
+            }
+          });
+      }
+
+      // Save the word to the database
+      const { error: insertError } = await supabase.from("words").insert({
+        user_id: data.user.id,
+        board_date: boardDate,
+        word,
+        score,
+      });
+
+      if (insertError) {
+        console.error("Failed to save word:", insertError);
+        setStatus({ tone: "error", message: "Failed to save word." });
+
+        // Revert the optimistic update if save fails
+        setWords((prev) => prev.filter((w) => w.word !== word));
+        return;
+      }
+    }
   }
 
   function handleSelect(row: number, col: number, options?: { autoSubmit?: boolean }) {
