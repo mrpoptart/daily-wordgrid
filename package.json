@@ -12,6 +12,7 @@
     "validate": "npm run lint && npm run typecheck && npm test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "migrate": "node scripts/run-migrations.mjs",
     "prepare": "husky"
   },
   "dependencies": {
