@@ -35,7 +35,7 @@ export default function LoginPage() {
             <LoginCard
               title="Sign in"
               description="Use your email for a magic link."
-              redirectPath="/"
+              redirectPath="/play"
             />
           </div>
         </div>
