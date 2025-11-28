@@ -4,13 +4,13 @@ import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { pb } from "@/lib/pocketbase";
+import { supabase } from "@/lib/supabase";
 
 const STATUS_MESSAGES = {
   idle: "Enter your email to receive a magic link.",
-  loading: "Sending a secure magic link...",
+  loading: "Logging in...",
   oauth: "Redirecting to Google...",
-  success: "Magic link sent! Check your inbox to continue.",
+  success: "Login successful!",
 } as const;
 
 type LoginCardProps = {
@@ -25,7 +25,7 @@ type FormState = keyof typeof STATUS_MESSAGES | "error";
 export function LoginCard({
   className,
   title = "Log in",
-  description = "Use PocketBase Auth to start playing.",
+  description = "Use Supabase Auth to start playing.",
   redirectPath = "/",
 }: LoginCardProps) {
   const [email, setEmail] = useState("");
@@ -48,7 +48,12 @@ export function LoginCard({
       setState("loading");
       setError("");
 
-      await pb.collection("users").authWithPassword(email, password);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
 
       setState("success");
       // Redirect or refresh
@@ -61,19 +66,19 @@ export function LoginCard({
     }
   }
 
-  function handleGoogleLogin() {
+  async function handleGoogleLogin() {
     try {
       setState("oauth");
       setError("");
 
-      pb.collection("users").authWithOAuth2({ provider: "google" }).then(() => {
-          if (typeof window !== "undefined") {
-            window.location.href = redirectPath;
-          }
-      }).catch(cause => {
-          setError(cause instanceof Error ? cause.message : "We couldn't start Google login. Please try again.");
-          setState("error");
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}${redirectPath}` : undefined
+        }
       });
+
+      if (error) throw error;
 
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "We couldn't start Google login. Please try again.");
@@ -84,7 +89,7 @@ export function LoginCard({
   return (
     <div className={cn("rounded-3xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-emerald-500/10", className)}>
       <div className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">PocketBase Auth</p>
+        <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">Supabase Auth</p>
         <h1 className="text-3xl font-semibold text-white">{title}</h1>
         <p className="text-sm text-slate-300">{description}</p>
       </div>

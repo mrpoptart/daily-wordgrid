@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { pb } from "@/lib/pocketbase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveBoardDate } from "@/lib/board/api-helpers";
 
 type SubmitRequestBody = {
@@ -98,35 +98,21 @@ export async function POST(req: Request) {
   const date = resolveBoardDate(typeof payload.date === "string" ? payload.date : null);
 
   try {
-    // Check if submission exists
-    // We assume unique constraint on (user_id, date) is enforced by DB or logic
-    // PocketBase doesn't have composite unique constraints easily in UI, but we can check.
+    // Upsert submission
+    const { data: record, error } = await supabaseAdmin
+      .from('submissions')
+      .upsert({
+        user_id: userId,
+        date,
+        words: JSON.stringify(words),
+        score,
+      }, { onConflict: 'user_id,date' })
+      .select()
+      .single();
 
-    // Attempt to find existing submission
-    let record;
-    try {
-        record = await pb.collection('submissions').getFirstListItem(`user_id="${userId}" && date="${date}"`);
-    } catch (err: unknown) {
-        if ((err as { status?: number }).status !== 404) {
-             console.error("Failed to check existing submission", err);
-             // proceed to try create, maybe
-        }
-    }
-
-    if (record) {
-        // Update
-        record = await pb.collection('submissions').update(record.id, {
-            words: JSON.stringify(words),
-            score,
-        });
-    } else {
-        // Create
-        record = await pb.collection('submissions').create({
-            user_id: userId,
-            date,
-            words: JSON.stringify(words),
-            score,
-        });
+    if (error || !record) {
+      console.error("Failed to record submission", error);
+      return errorResponse("database-error", 500);
     }
 
     const body: SubmitSuccessResponse = {
@@ -134,10 +120,10 @@ export async function POST(req: Request) {
       date,
       submission: {
         id: record.id,
-        userId: record.user_id, // Note: PB returns fields as snake_case if defined that way? Need to check. Assuming schema uses snake_case keys based on create call.
+        userId: record.user_id,
         words,
         score: record.score,
-        createdAt: record.created,
+        createdAt: record.created_at,
       },
     };
 
