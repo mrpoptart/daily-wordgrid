@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { fetchBoard } from "@/lib/board/fetch";
 import { WordGrid } from "@/components/play/word-grid";
+import { UserLastLoginUpdater } from "@/components/auth/user-last-login-updater";
 
 export const metadata = {
   title: "Today's board • Daily Wordgrid",
@@ -19,6 +20,7 @@ export default async function PlayPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <UserLastLoginUpdater />
       <div className="flex items-center justify-center border-b border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-emerald-100">
         Logged in
       </div>
