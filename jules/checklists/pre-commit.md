@@ -7,6 +7,7 @@ Before submitting my work, I will run through the following checks to ensure a h
 - [ ] Code is linted, and there are no linting errors.
 - [ ] Code is well-documented with comments where necessary.
 - [ ] All new dependencies have been added to the project's dependency management file.
+- [ ] **Build Check:** I have run `npm run build` and confirmed that the build succeeds without errors.
 
 ## 2. Testing
 - [ ] All existing tests pass.

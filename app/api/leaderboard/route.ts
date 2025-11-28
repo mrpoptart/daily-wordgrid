@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { pb } from "@/lib/pocketbase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { resolveBoardDate } from "@/lib/board/api-helpers";
 
 const DEFAULT_LIMIT = 25;
@@ -136,20 +136,25 @@ export async function GET(req?: Request) {
 
   try {
     // Fetch submissions for the date
-    // Sort by score (desc), created (asc)
-    const records = await pb.collection('submissions').getList(1, limit, {
-        filter: `date="${date}"`,
-        sort: '-score,+created',
-    });
+    // Sort by score (desc), created_at (asc)
+    const { data: rows, count, error } = await supabaseAdmin
+        .from('submissions')
+        .select('*', { count: 'exact' })
+        .eq('date', date)
+        .order('score', { ascending: false })
+        .order('created_at', { ascending: true })
+        .limit(limit);
 
-    // In PocketBase getList returns items and totalItems (count)
-    const totalPlayers = records.totalItems;
-    const rows = records.items;
+    if (error) {
+        throw error;
+    }
+
+    const totalPlayers = count ?? 0;
 
     let lastRank = 0;
     let lastScore: number | null = null;
 
-    const entries: LeaderboardEntry[] = rows.map((row, index) => {
+    const entries: LeaderboardEntry[] = (rows || []).map((row, index) => {
       const normalizedScore = normalizeScore(row.score);
 
       const rank = lastScore !== null && normalizedScore === lastScore ? lastRank : index + 1;
@@ -161,7 +166,7 @@ export async function GET(req?: Request) {
         userId: normalizeUserId(row.user_id),
         score: normalizedScore,
         words: parseWordsField(row.words),
-        submittedAt: formatSubmittedAt(row.created),
+        submittedAt: formatSubmittedAt(row.created_at),
       };
     });
 
