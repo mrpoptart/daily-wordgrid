@@ -14,6 +14,13 @@ async function run() {
 
   await client.connect();
 
+  await client.query(`
+    create table if not exists schema_migrations (
+      version text primary key,
+      applied_at timestamptz not null default now()
+    );
+  `);
+
   // Load migrations
   const migrationFiles = fs.readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
