@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthRedirect } from "@/components/auth/auth-redirect";
 import { LoginCard } from "@/components/auth/login-card";
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +11,7 @@ export const metadata = {
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AuthRedirect />
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 px-6 py-16 lg:flex-row lg:items-start lg:gap-16 lg:px-10">
         <div className="flex-1 space-y-6 text-center lg:text-left">
           <p className="inline-flex items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200">
@@ -35,7 +37,7 @@ export default function LoginPage() {
             <LoginCard
               title="Sign in"
               description="Use your email for a magic link."
-              redirectPath="/"
+              redirectPath="/play"
             />
           </div>
         </div>
