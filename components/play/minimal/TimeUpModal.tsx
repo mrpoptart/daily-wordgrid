@@ -25,7 +25,7 @@ export function TimeUpModal({ score, wordsFound, onShare, onKeepPlaying, isOpen 
           <Button onClick={onShare} className="w-full bg-[#1A1A1A] text-white hover:bg-[#333333]">
             Share Score
           </Button>
-          <Button onClick={onKeepPlaying} variant="outline" className="w-full border-gray-300 hover:bg-gray-50">
+          <Button onClick={onKeepPlaying} className="w-full bg-[#1A1A1A] text-white hover:bg-[#333333]">
             Keep Playing
           </Button>
         </div>

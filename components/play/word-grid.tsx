@@ -140,9 +140,26 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     setShowTimeUpModal(true);
   }
 
-  function handleShare() {
+  async function handleShare() {
     const text = `I found ${wordsWithinTime.length} words for ${scoreWithinTime} points in Daily Wordgrid!`;
-    navigator.clipboard.writeText(text);
+    const url = window.location.href;
+    const shareData = {
+      title: 'Daily Wordgrid',
+      text,
+      url,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    }
+
+    // Fallback to clipboard
+    navigator.clipboard.writeText(`${text} ${url}`);
     toast.success("Score copied to clipboard!");
   }
 
