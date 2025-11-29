@@ -111,8 +111,8 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     });
 
     return {
-      wordsWithinTime: within,
-      wordsAfterTime: after,
+      wordsWithinTime: within.sort((a, b) => a.word.localeCompare(b.word)),
+      wordsAfterTime: after.sort((a, b) => a.word.localeCompare(b.word)),
       scoreWithinTime: sWithin,
       scoreAfterTime: sAfter
     };
