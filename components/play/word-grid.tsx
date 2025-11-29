@@ -209,10 +209,10 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+    <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-[1fr_400px]">
       {/* Board Column */}
       <div className="flex justify-center lg:justify-start">
-        <div className="w-full max-w-[500px]">
+        <div className="w-full max-w-[300px] sm:max-w-[360px] md:max-w-[420px] lg:max-w-[500px]">
           <BoardComponent
             board={board}
             highlightedCells={highlightedCells}

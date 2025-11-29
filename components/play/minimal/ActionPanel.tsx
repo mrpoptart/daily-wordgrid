@@ -33,7 +33,7 @@ export function ActionPanel({
   inputRef
 }: ActionPanelProps) {
   return (
-    <div className="flex flex-col gap-8 p-4 md:p-0">
+    <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 p-4 md:p-0">
       <div className="flex flex-col gap-2">
         <label htmlFor="word-input" className="text-sm font-medium text-[#1A1A1A]">
           Word
