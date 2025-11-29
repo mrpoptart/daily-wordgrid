@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -28,9 +28,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [input, setInput] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [lastFoundWord, setLastFoundWord] = useState<string | null>(null);
-
-  // We no longer rely on inputRef for focus, but we might need it for accessibility if we keep a hidden input
-  // For now, we'll focus on global input handling.
 
   // Load initial state
   useEffect(() => {
