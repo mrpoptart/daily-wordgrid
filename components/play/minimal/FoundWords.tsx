@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 interface FoundWordsProps {
   wordsWithinTime: { word: string; score: number }[];
@@ -9,13 +9,6 @@ interface FoundWordsProps {
 
 export function FoundWords({ wordsWithinTime, wordsAfterTime }: FoundWordsProps) {
   const listRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to bottom when either list changes
-  useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
-  }, [wordsWithinTime, wordsAfterTime]);
 
   return (
     <div className="flex flex-col gap-4">
