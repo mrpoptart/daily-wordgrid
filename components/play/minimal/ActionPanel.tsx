@@ -16,6 +16,7 @@ interface ActionPanelProps {
   wordsWithinTime: { word: string; score: number }[];
   wordsAfterTime: { word: string; score: number }[];
   isTimeUp: boolean;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 export function ActionPanel({
@@ -28,7 +29,8 @@ export function ActionPanel({
   onTimeUp,
   wordsWithinTime,
   wordsAfterTime,
-  isTimeUp
+  isTimeUp,
+  inputRef
 }: ActionPanelProps) {
   return (
     <div className="flex flex-col gap-8 p-4 md:p-0">
@@ -38,6 +40,7 @@ export function ActionPanel({
         </label>
         <form onSubmit={onSubmit} className="flex gap-2">
           <Input
+            ref={inputRef}
             id="word-input"
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
