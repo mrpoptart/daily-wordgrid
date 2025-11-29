@@ -128,7 +128,7 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction }: 
               data-row={rowIndex}
               data-col={colIndex}
               className={cn(
-                "flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-lg border border-[#E0E0E0]",
+                "flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-full border border-[#E0E0E0]",
                 highlighted ? "bg-[#3A7AFE] text-white border-[#3A7AFE]" : "bg-[#FAFAFA] text-[#1A1A1A]",
                 "cursor-pointer" // Indicate interactivity
               )}
