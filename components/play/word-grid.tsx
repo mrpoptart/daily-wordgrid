@@ -14,6 +14,7 @@ import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
 
 import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
 import { ActionPanel } from "./minimal/ActionPanel";
+import { TimeUpModal } from "./minimal/TimeUpModal";
 
 export type WordGridProps = {
   board: Board;
@@ -28,6 +29,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [input, setInput] = useState("");
   const [dragPath, setDragPath] = useState<{ row: number; col: number }[] | null>(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -135,6 +137,18 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
   function handleTimeUp() {
     setIsTimeUp(true);
+    setShowTimeUpModal(true);
+  }
+
+  function handleShare() {
+    const text = `I found ${wordsWithinTime.length} words for ${scoreWithinTime} points in Daily Wordgrid!`;
+    navigator.clipboard.writeText(text);
+    toast.success("Score copied to clipboard!");
+  }
+
+  function handleKeepPlaying() {
+    setShowTimeUpModal(false);
+    inputRef.current?.focus();
   }
 
   async function handleSubmit(e?: React.FormEvent, explicitWord?: string, explicitPath?: {row: number, col: number}[]) {
@@ -327,6 +341,14 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
           isTimeUp={isTimeUp}
         />
       </div>
+
+      <TimeUpModal
+        score={scoreWithinTime}
+        wordsFound={wordsWithinTime.length}
+        onShare={handleShare}
+        onKeepPlaying={handleKeepPlaying}
+        isOpen={showTimeUpModal}
+      />
     </div>
   );
 }

@@ -16,7 +16,7 @@ export function Timer({ boardStartedAt, onTimeUp }: TimerProps) {
       return;
     }
 
-    const interval = setInterval(() => {
+    const checkTime = () => {
       const now = new Date().getTime();
       const start = new Date(boardStartedAt).getTime();
       const elapsedSeconds = Math.floor((now - start) / 1000);
@@ -26,8 +26,19 @@ export function Timer({ boardStartedAt, onTimeUp }: TimerProps) {
 
       if (remaining === 0) {
         onTimeUp();
-        clearInterval(interval);
+        // Return true to indicate we should clear interval
+        return true;
       }
+      return false;
+    };
+
+    // Run immediately
+    const isDone = checkTime();
+    if (isDone) return;
+
+    const interval = setInterval(() => {
+      const done = checkTime();
+      if (done) clearInterval(interval);
     }, 1000);
 
     return () => clearInterval(interval);
