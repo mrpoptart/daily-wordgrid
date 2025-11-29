@@ -61,10 +61,10 @@ describe("WordGrid", () => {
     });
   });
 
-  it("does not submit invalid words", async () => {
+  it("does not submit invalid words and clears input", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i);
+    const input = screen.getByLabelText(/word/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "ZZZZ" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
@@ -74,6 +74,28 @@ describe("WordGrid", () => {
     // Toasts are hard to test with just screen.getByText depending on the library
     // But we can check that the word is NOT in the list
     expect(screen.queryByText("ZZZZ")).not.toBeInTheDocument();
+
+    // Verify input is cleared (since ZZZZ is not on board or not in dictionary, both clear input now)
+    await waitFor(() => {
+        expect(input.value).toBe("");
+    });
+  });
+
+  it("clears input when word is on board but not in dictionary", async () => {
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
+
+    // "AAAA" is on the board (row 1, cols 0-3) but likely not in dictionary
+    const input = screen.getByLabelText(/word/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "AAAA" } });
+
+    const submitButton = screen.getByRole("button", { name: /submit/i });
+    fireEvent.click(submitButton);
+
+    expect(screen.queryByText("AAAA")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+        expect(input.value).toBe("");
+    });
   });
 
   it("does not submit words shorter than 4 letters", async () => {
