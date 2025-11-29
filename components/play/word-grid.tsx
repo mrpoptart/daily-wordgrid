@@ -27,7 +27,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [boardStartedAt, setBoardStartedAt] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
-  const [lastFoundWord, setLastFoundWord] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load initial state
@@ -51,9 +50,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
               }));
               setWords(Array.from(uniqueWords.values()));
 
-              if (fetchedWords.length > 0) {
-                 setLastFoundWord(fetchedWords[fetchedWords.length - 1].word);
-              }
             }
           });
 
@@ -123,16 +119,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     return [];
   }, [input, board]);
 
-  // Calculate cells for the last found word
-  const lastFoundCells = useMemo(() => {
-    if (!lastFoundWord) return [];
-    const path = findPathForWord(board, lastFoundWord);
-    if (path) {
-      return path.map(([row, col]) => ({ row, col }));
-    }
-    return [];
-  }, [lastFoundWord, board]);
-
   function handleTimeUp() {
     setIsTimeUp(true);
   }
@@ -188,7 +174,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     // Optimistic update
     const newWord = { word, score, timestamp: now };
     setWords(prev => [...prev, newWord]);
-    setLastFoundWord(word);
     setInput("");
     inputRef.current?.focus();
     toast.success(`Found ${word}`, { description: `+${score} points` });
@@ -231,7 +216,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
           <BoardComponent
             board={board}
             highlightedCells={highlightedCells}
-            lastFoundCells={lastFoundCells}
           />
         </div>
       </div>
