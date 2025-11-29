@@ -109,7 +109,7 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction }: 
   return (
     <div
       ref={boardRef}
-      className="grid grid-cols-5 border border-[#E0E0E0] bg-[#FAFAFA] touch-none select-none"
+      className="grid grid-cols-5 gap-2 touch-none select-none"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -128,12 +128,8 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction }: 
               data-row={rowIndex}
               data-col={colIndex}
               className={cn(
-                "flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150",
-                "border-b border-r border-[#E0E0E0]",
-                // Remove right border for last column, bottom border for last row
-                colIndex === 4 && "border-r-0",
-                rowIndex === 4 && "border-b-0",
-                highlighted ? "bg-[#3A7AFE] text-white" : "text-[#1A1A1A]",
+                "flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-lg border border-[#E0E0E0]",
+                highlighted ? "bg-[#3A7AFE] text-white border-[#3A7AFE]" : "bg-[#FAFAFA] text-[#1A1A1A]",
                 "cursor-pointer" // Indicate interactivity
               )}
             >
