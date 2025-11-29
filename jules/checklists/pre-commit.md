@@ -10,9 +10,8 @@ Before submitting my work, I will run through the following checks to ensure a h
 - [ ] **Build Check:** I have run `npm run build` and confirmed that the build succeeds without errors.
 
 ## 2. Testing
-- [ ] All existing tests pass.
+- [ ] **Test Check:** I have run `npm test` and confirmed that all existing and new tests pass.
 - [ ] New unit or integration tests have been added to cover the changes.
-- [ ] I have run the tests locally to confirm they pass.
 
 ## 3. Verification
 - [ ] I have read through my changes to catch any typos or logic errors.
