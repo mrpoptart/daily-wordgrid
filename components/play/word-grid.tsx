@@ -12,7 +12,7 @@ import {
 import { scoreWordLength } from "@/lib/scoring";
 import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
 
-import { BoardComponent } from "./minimal/Board";
+import { BoardComponent, InteractionType } from "./minimal/Board";
 import { ActionPanel } from "./minimal/ActionPanel";
 
 export type WordGridProps = {
@@ -26,6 +26,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [words, setWords] = useState<AddedWord[]>([]);
   const [boardStartedAt, setBoardStartedAt] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [dragPath, setDragPath] = useState<{ row: number; col: number }[] | null>(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -107,8 +108,10 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   }, [words, boardStartedAt]);
 
 
-  // Calculate highlighted cells based on input
+  // Calculate highlighted cells based on input or drag
   const highlightedCells = useMemo(() => {
+    if (dragPath) return dragPath;
+
     const trimmed = input.trim();
     if (!trimmed) return [];
 
@@ -117,17 +120,17 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       return path.map(([row, col]) => ({ row, col }));
     }
     return [];
-  }, [input, board]);
+  }, [input, board, dragPath]);
 
   function handleTimeUp() {
     setIsTimeUp(true);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(e?: React.FormEvent, explicitWord?: string) {
+    if (e) e.preventDefault();
     // Allow submission even if time is up
 
-    const trimmed = input.trim();
+    const trimmed = (explicitWord || input).trim();
     if (!trimmed) return;
 
     if (trimmed.length < MIN_PATH_LENGTH) {
@@ -146,6 +149,12 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     }
 
     // Validate path
+    // Even if dragged, we double check validity (e.g. against dictionary)
+    // We re-find path to ensure consistent validation logic,
+    // but strictly speaking we could assume path is valid if explicitWord comes from drag.
+    // However, validation also checks dictionary.
+
+    // Check if on board (always true for drag, but good sanity check)
     const path = findPathForWord(board, trimmed);
     if (!path) {
       toast.error("Not on board");
@@ -208,6 +217,56 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     }
   }
 
+  const handleInteraction = (row: number, col: number, type: InteractionType) => {
+    if (type === 'start') {
+        const letter = board[row][col];
+        setDragPath([{ row, col }]);
+        setInput(letter);
+    } else if (type === 'move') {
+        if (!dragPath) return;
+
+        const lastCell = dragPath[dragPath.length - 1];
+
+        // Ignore same cell
+        if (lastCell.row === row && lastCell.col === col) return;
+
+        // Check for backtrack
+        if (dragPath.length > 1) {
+            const prevCell = dragPath[dragPath.length - 2];
+            if (prevCell.row === row && prevCell.col === col) {
+                const newPath = dragPath.slice(0, -1);
+                setDragPath(newPath);
+                // Also update input to remove last char
+                setInput(prev => prev.slice(0, -1));
+                return;
+            }
+        }
+
+        // Check adjacency
+        const rowDiff = Math.abs(lastCell.row - row);
+        const colDiff = Math.abs(lastCell.col - col);
+        const isAdjacent = rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
+
+        if (!isAdjacent) return;
+
+        // Check if visited
+        const isVisited = dragPath.some(c => c.row === row && c.col === col);
+        if (isVisited) return;
+
+        const letter = board[row][col];
+        setDragPath([...dragPath, { row, col }]);
+        setInput(prev => prev + letter);
+
+    } else if (type === 'end') {
+        if (dragPath && dragPath.length > 0) {
+             const word = dragPath.map(p => board[p.row][p.col]).join("");
+             // Slight delay or immediate? Immediate is snappier.
+             handleSubmit(undefined, word);
+        }
+        setDragPath(null);
+    }
+  };
+
   return (
     <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-[1fr_400px]">
       {/* Board Column */}
@@ -216,6 +275,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
           <BoardComponent
             board={board}
             highlightedCells={highlightedCells}
+            onInteraction={handleInteraction}
           />
         </div>
       </div>
