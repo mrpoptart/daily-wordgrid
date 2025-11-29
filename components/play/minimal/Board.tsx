@@ -4,13 +4,23 @@ import { Board } from "@/lib/board/types";
 
 export type InteractionType = 'start' | 'move' | 'end';
 
+export type FeedbackType = 'success' | 'duplicate' | 'invalid';
+
+export interface FeedbackState {
+  type: FeedbackType;
+  message?: string;
+  row: number;
+  col: number;
+}
+
 interface BoardProps {
   board: Board;
   highlightedCells?: { row: number; col: number }[];
   onInteraction?: (row: number, col: number, type: InteractionType) => void;
+  feedback?: FeedbackState | null;
 }
 
-export function BoardComponent({ board, highlightedCells = [], onInteraction }: BoardProps) {
+export function BoardComponent({ board, highlightedCells = [], onInteraction, feedback }: BoardProps) {
   const boardRef = useRef<HTMLDivElement>(null);
   // specific state to track if we are currently in a drag operation (mouse or touch)
   // to avoid triggering move events when just hovering with mouse
@@ -120,6 +130,7 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction }: 
       {board.map((row, rowIndex) =>
         row.map((letter, colIndex) => {
           const highlighted = isHighlighted(rowIndex, colIndex);
+          const isFeedbackCell = feedback?.row === rowIndex && feedback?.col === colIndex;
 
           return (
             <div
@@ -128,12 +139,37 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction }: 
               data-row={rowIndex}
               data-col={colIndex}
               className={cn(
-                "flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-full border border-[#E0E0E0]",
+                "relative flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-full border border-[#E0E0E0]",
                 highlighted ? "bg-[#3A7AFE] text-white border-[#3A7AFE]" : "bg-[#FAFAFA] text-[#1A1A1A]",
                 "cursor-pointer" // Indicate interactivity
               )}
             >
               {letter}
+              {isFeedbackCell && (
+                <div className="absolute top-1/2 left-1/2 z-50 pointer-events-none animate-float-up">
+                    {/* Content based on feedback.type */}
+                    {feedback.type === 'success' && (
+                       <div className="bg-white border border-gray-200 text-green-600 font-bold px-2 py-0.5 rounded-full shadow-lg text-sm flex items-center whitespace-nowrap">
+                           {feedback.message}
+                       </div>
+                    )}
+                    {feedback.type === 'duplicate' && (
+                        <div className="bg-green-500 rounded-full p-1 text-white shadow-lg">
+                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" className="w-5 h-5">
+                              <polyline points="20 6 9 17 4 12" />
+                           </svg>
+                        </div>
+                    )}
+                    {feedback.type === 'invalid' && (
+                        <div className="bg-red-500 rounded-full p-1 text-white shadow-lg">
+                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" className="w-5 h-5">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                           </svg>
+                        </div>
+                    )}
+                </div>
+              )}
             </div>
           );
         })
