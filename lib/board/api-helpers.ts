@@ -14,9 +14,51 @@ export function formatDateUTC(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function resolveBoardDate(dateParam: string | null | undefined): string {
+function normalizeTimeZone(tz: string | null | undefined): string | null {
+  if (!tz) return null;
+  const trimmed = tz.trim();
+  if (trimmed.length === 0) return null;
+
+  try {
+    // will throw on invalid time zone
+    new Intl.DateTimeFormat("en-US", { timeZone: trimmed }).format();
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
+
+function formatDateForTimeZone(date: Date, timeZone: string): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return formatter.format(date);
+}
+
+const DEFAULT_TIME_ZONE = "America/New_York";
+
+export function resolveBoardDate(
+  dateParam: string | null | undefined,
+  timeZone?: string | null,
+): string {
   const normalized = normalizeDateInput(dateParam);
-  return normalized ?? formatDateUTC(new Date());
+  if (normalized) return normalized;
+
+  const normalizedTimeZone = normalizeTimeZone(timeZone);
+  const effectiveTimeZone = normalizedTimeZone ?? DEFAULT_TIME_ZONE;
+
+  return formatDateForTimeZone(new Date(), effectiveTimeZone);
+}
+
+export function resolveTimeZone(
+  queryTimeZone: string | null | undefined,
+  headerTimeZone?: string | null,
+): string | null {
+  return normalizeTimeZone(queryTimeZone) ?? normalizeTimeZone(headerTimeZone);
 }
 
 export function flattenBoard(board: Board): string {

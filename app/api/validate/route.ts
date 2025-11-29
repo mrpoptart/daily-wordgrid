@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateBoardForDate } from "@/lib/board/generate";
-import { flattenBoard, resolveBoardDate, resolveDailySalt } from "@/lib/board/api-helpers";
+import { flattenBoard, resolveBoardDate, resolveDailySalt, resolveTimeZone } from "@/lib/board/api-helpers";
 import type { Coord } from "@/lib/validation/adjacency";
 import { validateWord, type WordCheck } from "@/lib/validation/words";
 
@@ -53,7 +53,12 @@ export async function POST(req: Request) {
     return NextResponse.json(errorBody, { status: 400 });
   }
 
-  const date = resolveBoardDate(typeof body.date === "string" ? body.date : null);
+  const url = new URL(req.url);
+  const timeZone = resolveTimeZone(
+    url.searchParams.get("tz"),
+    req.headers.get("x-vercel-ip-timezone") ?? req.headers.get("x-time-zone"),
+  );
+  const date = resolveBoardDate(typeof body.date === "string" ? body.date : null, timeZone);
   const { salt, hasDailySalt } = resolveDailySalt();
   const board = generateBoardForDate(date, salt);
   const result = validateWord(board, body.path);

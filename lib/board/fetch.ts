@@ -9,9 +9,14 @@ import { resolveBaseUrl } from "@/lib/url";
 
 const FALLBACK_BASE_URL = "http://localhost:3000";
 
-export async function fetchBoard(): Promise<BoardResponse | null> {
+export async function fetchBoard({
+  timeZone,
+}: { timeZone?: string | null } = {}): Promise<BoardResponse | null> {
   const baseUrl = await resolveBaseUrl(FALLBACK_BASE_URL);
-  const endpoint = `${baseUrl}/api/board`;
+  const endpoint = new URL(`${baseUrl}/api/board`);
+  if (timeZone?.trim()) {
+    endpoint.searchParams.set("tz", timeZone.trim());
+  }
 
   try {
     const res = await fetch(endpoint, { cache: "no-store" });
@@ -23,11 +28,11 @@ export async function fetchBoard(): Promise<BoardResponse | null> {
     console.error("Failed to load daily board", error);
   }
 
-  return buildLocalBoardResponse();
+  return buildLocalBoardResponse(timeZone);
 }
 
-function buildLocalBoardResponse(): BoardResponse {
-  const date = resolveBoardDate(null);
+function buildLocalBoardResponse(timeZone?: string | null): BoardResponse {
+  const date = resolveBoardDate(null, timeZone);
   const { salt, hasDailySalt } = resolveDailySalt();
   const board = generateBoardForDate(date, salt);
 

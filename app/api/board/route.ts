@@ -6,8 +6,13 @@ import type { Board, BoardRow } from "@/lib/board/types";
 import {
   flattenBoard,
   resolveBoardDate,
+  resolveTimeZone,
   resolveDailySalt,
 } from "@/lib/board/api-helpers";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export type BoardResponse = {
   status: "ok";
@@ -22,7 +27,11 @@ export type BoardResponse = {
 export async function GET(req?: Request) {
   const url = req ? new URL(req.url) : null;
   const dateParam = url ? url.searchParams.get("date") : null;
-  const date = resolveBoardDate(dateParam);
+  const timeZone = resolveTimeZone(
+    url ? url.searchParams.get("tz") : null,
+    req?.headers.get("x-vercel-ip-timezone") ?? req?.headers.get("x-time-zone"),
+  );
+  const date = resolveBoardDate(dateParam, timeZone);
 
   const { salt, hasDailySalt } = resolveDailySalt();
   const seed = createHash("sha256").update(`${date}|${salt}`).digest("hex");
@@ -89,5 +98,11 @@ export async function GET(req?: Request) {
     env: { hasDailySalt },
   };
 
-  return NextResponse.json(body, { status: 200 });
+  return NextResponse.json(body, {
+    status: 200,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      Pragma: "no-cache",
+    },
+  });
 }

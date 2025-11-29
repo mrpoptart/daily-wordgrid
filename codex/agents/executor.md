@@ -25,5 +25,5 @@ Implement code or content changes that satisfy the scoped requirements prepared 
 - [ ] Follow project linting and formatting rules.
 - [ ] Keep commits small and descriptive.
 - [ ] Update documentation, changelogs, and types as required.
-- [ ] Run the full test suite and record results.
+- [ ] Run linting, the full test suite, and a production build; record results.
 - [ ] Tag the reviewer agent when the PR is ready.

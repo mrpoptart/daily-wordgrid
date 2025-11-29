@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { resolveBoardDate } from "@/lib/board/api-helpers";
+import { resolveBoardDate, resolveTimeZone } from "@/lib/board/api-helpers";
 
 type SubmitRequestBody = {
   userId?: unknown;
@@ -95,7 +95,12 @@ export async function POST(req: Request) {
     return errorResponse("invalid-score", 400);
   }
 
-  const date = resolveBoardDate(typeof payload.date === "string" ? payload.date : null);
+  const url = new URL(req.url);
+  const timeZone = resolveTimeZone(
+    url.searchParams.get("tz"),
+    req.headers.get("x-vercel-ip-timezone") ?? req.headers.get("x-time-zone"),
+  );
+  const date = resolveBoardDate(typeof payload.date === "string" ? payload.date : null, timeZone);
 
   try {
     // Upsert submission

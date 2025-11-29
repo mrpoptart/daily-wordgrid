@@ -15,7 +15,7 @@ Use this workflow when implementing a new feature or substantial enhancement dri
 ## 3. Implementation (Executor)
 - Create a feature branch from `main` and implement changes.
 - Write or update automated tests and documentation.
-- Run linting and test commands locally, noting results in the PR description.
+- Run linting, the full test suite, and a production build locally, noting results in the PR description.
 - Open a pull request referencing the issue once ready for review.
 
 ## 4. Review (Reviewer)
