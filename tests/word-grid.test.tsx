@@ -23,36 +23,71 @@ const testBoard: Board = [
   ["A", "A", "A", "A", "A"],
 ];
 
+// Helper to simulate global typing
+function typeWord(word: string) {
+  for (const char of word) {
+    fireEvent.keyDown(window, { key: char });
+  }
+}
+
 describe("WordGrid", () => {
-  it("allows typing a word and submitting", async () => {
+  it("allows typing a word via virtual keyboard and submitting", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i);
-    fireEvent.change(input, { target: { value: "TEST" } });
+    // Click letters on virtual keyboard
+    fireEvent.click(screen.getByRole("button", { name: "T" }));
+    fireEvent.click(screen.getByRole("button", { name: "E" }));
+    fireEvent.click(screen.getByRole("button", { name: "S" }));
+    fireEvent.click(screen.getByRole("button", { name: "T" }));
 
-    const submitButton = screen.getByRole("button", { name: /submit/i });
+    // Click submit on virtual keyboard (ENTER) or the Submit button
+    const submitButton = screen.getByRole("button", { name: "Submit" }); // The separate button
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-        expect(screen.getByText("TEST")).toBeInTheDocument();
+        // We look for the found word in the list (FoundWords component)
+        // Since "TEST" is also on the keyboard, we need to be specific.
+        // Found words are usually in a list.
+        const foundWord = screen.getByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'span' && content === 'TEST';
+        });
+        expect(foundWord).toBeInTheDocument();
         expect(screen.getByText("(1 pts)")).toBeInTheDocument();
+    });
+  });
+
+  it("allows typing a word via global keyboard and submitting", async () => {
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
+
+    typeWord("TEST");
+
+    fireEvent.keyDown(window, { key: "Enter" });
+
+    await waitFor(() => {
+         const foundWord = screen.getByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'span' && content === 'TEST';
+        });
+        expect(foundWord).toBeInTheDocument();
     });
   });
 
   it("highlights the board when typing a valid word", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i);
-    fireEvent.change(input, { target: { value: "TEST" } });
-
-    // Assuming highlighted cells have a specific class or style.
-    // In my implementation: bg-[#3A7AFE] text-white
-
-    // We can check if the cells are highlighted by checking classes
-    // The cells are divs with text content.
+    typeWord("TEST");
 
     // T (0,0)
-    const tiles = screen.getAllByText("T");
+    // There are multiple "T"s now (board + keyboard).
+    // Board tiles have specific class or structure.
+    // The keyboard buttons are buttons. The board tiles are divs.
+
+    // Board tiles are in a container with grid-cols-5.
+    // Let's rely on the fact that board tiles have the class 'aspect-square'.
+    // Or we can scope it.
+
+    // Actually, `getAllByText("T")` will return all.
+    // We can filter by those that are NOT buttons.
+    const tiles = screen.getAllByText("T").filter(el => el.tagName !== 'BUTTON');
     const firstT = tiles[0];
 
     // Wait for highlight update
@@ -64,49 +99,39 @@ describe("WordGrid", () => {
   it("does not submit invalid words and clears input", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "ZZZZ" } });
-
-    const submitButton = screen.getByRole("button", { name: /submit/i });
-    fireEvent.click(submitButton);
+    typeWord("ZZZZ");
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
     // Should verify toast error or no word added
-    // Toasts are hard to test with just screen.getByText depending on the library
-    // But we can check that the word is NOT in the list
-    expect(screen.queryByText("ZZZZ")).not.toBeInTheDocument();
+    expect(screen.queryByText((content, el) => el?.tagName === 'SPAN' && content === "ZZZZ")).not.toBeInTheDocument();
 
-    // Verify input is cleared (since ZZZZ is not on board or not in dictionary, both clear input now)
+    // Verify input is cleared.
+    // The input display is a div with text content.
+    // We can look for "Type or click letters..." placeholder if empty.
     await waitFor(() => {
-        expect(input.value).toBe("");
+        expect(screen.getByText("Type or click letters...")).toBeInTheDocument();
     });
   });
 
   it("clears input when word is on board but not in dictionary", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    // "AAAA" is on the board (row 1, cols 0-3) but likely not in dictionary
-    const input = screen.getByLabelText(/word/i) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "AAAA" } });
+    typeWord("AAAA");
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
-    const submitButton = screen.getByRole("button", { name: /submit/i });
-    fireEvent.click(submitButton);
-
-    expect(screen.queryByText("AAAA")).not.toBeInTheDocument();
+    expect(screen.queryByText((content, el) => el?.tagName === 'SPAN' && content === "AAAA")).not.toBeInTheDocument();
 
     await waitFor(() => {
-        expect(input.value).toBe("");
+        expect(screen.getByText("Type or click letters...")).toBeInTheDocument();
     });
   });
 
   it("does not submit words shorter than 4 letters", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i);
-    fireEvent.change(input, { target: { value: "TES" } });
+    typeWord("TES");
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
-    const submitButton = screen.getByRole("button", { name: /submit/i });
-    fireEvent.click(submitButton);
-
-    expect(screen.queryByText("TES")).not.toBeInTheDocument();
+    expect(screen.queryByText((content, el) => el?.tagName === 'SPAN' && content === "TES")).not.toBeInTheDocument();
   });
 });

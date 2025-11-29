@@ -2,8 +2,9 @@
 
 import { Timer } from "./Timer";
 import { FoundWords } from "./FoundWords";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { VirtualKeyboard } from "./VirtualKeyboard";
+import { cn } from "@/lib/utils";
 
 interface ActionPanelProps {
   input: string;
@@ -17,11 +18,13 @@ interface ActionPanelProps {
   wordsAfterTime: { word: string; score: number }[];
   isTimeUp: boolean;
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  onVirtualChar: (char: string) => void;
+  onVirtualDelete: () => void;
+  onVirtualSubmit: () => void;
 }
 
 export function ActionPanel({
   input,
-  onInputChange,
   onSubmit,
   scoreWithinTime,
   scoreAfterTime,
@@ -30,32 +33,41 @@ export function ActionPanel({
   wordsWithinTime,
   wordsAfterTime,
   isTimeUp,
-  inputRef
+  onVirtualChar,
+  onVirtualDelete,
+  onVirtualSubmit,
 }: ActionPanelProps) {
   return (
-    <div className="flex flex-col gap-8 p-4 md:p-0">
+    <div className="flex flex-col gap-4 md:gap-8 p-4 md:p-0">
       <div className="flex flex-col gap-2">
-        <label htmlFor="word-input" className="text-sm font-medium text-[#1A1A1A]">
-          Word
-        </label>
-        <form onSubmit={onSubmit} className="flex gap-2">
-          <Input
-            ref={inputRef}
-            id="word-input"
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            placeholder="enter word"
-            className="border-[#E0E0E0] bg-white text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#3A7AFE] focus-visible:ring-offset-0"
-            autoComplete="off"
-            autoFocus
-          />
+        {/* Visual Display of Input */}
+        <div className="flex gap-2">
+          <div
+            className={cn(
+              "flex h-10 w-full rounded-md border border-[#E0E0E0] bg-white px-3 py-2 text-sm text-[#1A1A1A]",
+              "items-center font-medium uppercase tracking-widest"
+            )}
+          >
+            {input || <span className="text-gray-400 normal-case tracking-normal">Type or click letters...</span>}
+            {/* Blinking cursor simulation */}
+            <span className="ml-0.5 inline-block h-5 w-[2px] animate-pulse bg-[#3A7AFE]"></span>
+          </div>
           <Button
-            type="submit"
+            onClick={(e) => onSubmit(e as unknown as React.FormEvent)}
             className="bg-[#1A1A1A] text-white hover:bg-[#333333]"
           >
             Submit
           </Button>
-        </form>
+        </div>
+      </div>
+
+       {/* Virtual Keyboard - shown on all devices now as it's a good feature, but especially for mobile */}
+       <div className="mt-2">
+        <VirtualKeyboard
+          onChar={onVirtualChar}
+          onDelete={onVirtualDelete}
+          onSubmit={onVirtualSubmit}
+        />
       </div>
 
       <div className="flex items-center justify-between border-y border-[#E0E0E0] py-4">
