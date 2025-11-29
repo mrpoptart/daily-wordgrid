@@ -12,7 +12,7 @@ import {
 import { scoreWordLength } from "@/lib/scoring";
 import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
 
-import { BoardComponent, InteractionType } from "./minimal/Board";
+import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
 import { ActionPanel } from "./minimal/ActionPanel";
 
 export type WordGridProps = {
@@ -28,6 +28,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [input, setInput] = useState("");
   const [dragPath, setDragPath] = useState<{ row: number; col: number }[] | null>(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load initial state
@@ -69,6 +70,16 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       }
     });
   }, [boardDate]);
+
+  // Clear feedback after delay
+  useEffect(() => {
+    if (feedback) {
+      const timer = setTimeout(() => {
+        setFeedback(null);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
 
   // Categorize words
   const { wordsWithinTime, wordsAfterTime, scoreWithinTime, scoreAfterTime } = useMemo(() => {
@@ -126,15 +137,35 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     setIsTimeUp(true);
   }
 
-  async function handleSubmit(e?: React.FormEvent, explicitWord?: string) {
+  async function handleSubmit(e?: React.FormEvent, explicitWord?: string, explicitPath?: {row: number, col: number}[]) {
     if (e) e.preventDefault();
     // Allow submission even if time is up
 
     const trimmed = (explicitWord || input).trim();
     if (!trimmed) return;
 
+    // Determine path for feedback
+    let pathForFeedback: {row: number, col: number}[] | null = null;
+    if (explicitPath) {
+        pathForFeedback = explicitPath;
+    } else {
+        // Fallback to finding path
+        const p = findPathForWord(board, trimmed);
+        if (p) {
+             pathForFeedback = p.map(([row, col]) => ({ row, col }));
+        }
+    }
+
+    const lastCell = pathForFeedback ? pathForFeedback[pathForFeedback.length - 1] : null;
+    const showFeedback = (type: FeedbackType, message?: string) => {
+        if (lastCell) {
+            setFeedback({ type, message, row: lastCell.row, col: lastCell.col });
+        }
+    };
+
     if (trimmed.length < MIN_PATH_LENGTH) {
       toast.error("Too short", { description: `Minimum ${MIN_PATH_LENGTH} letters` });
+      showFeedback('invalid');
       setInput("");
       inputRef.current?.focus();
       return;
@@ -143,21 +174,18 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     // Check duplicates
     if (words.some(w => w.word.toLowerCase() === trimmed.toLowerCase())) {
       toast.error("Already found");
+      showFeedback('duplicate');
       setInput("");
       inputRef.current?.focus();
       return;
     }
 
     // Validate path
-    // Even if dragged, we double check validity (e.g. against dictionary)
-    // We re-find path to ensure consistent validation logic,
-    // but strictly speaking we could assume path is valid if explicitWord comes from drag.
-    // However, validation also checks dictionary.
-
-    // Check if on board (always true for drag, but good sanity check)
     const path = findPathForWord(board, trimmed);
     if (!path) {
       toast.error("Not on board");
+      // If not on board, we can't show tooltip on the board because path is null.
+      // We rely on toast.
       setInput("");
       inputRef.current?.focus();
       return;
@@ -171,6 +199,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
        } else {
          toast.error("Invalid word");
        }
+       showFeedback('invalid');
        setInput("");
        inputRef.current?.focus();
        return;
@@ -186,6 +215,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     setInput("");
     inputRef.current?.focus();
     toast.success(`Found ${word}`, { description: `+${score} points` });
+    showFeedback('success', `+${score}`);
 
     // Persist
     const { data } = await supabase.auth.getUser();
@@ -260,8 +290,8 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     } else if (type === 'end') {
         if (dragPath && dragPath.length > 0) {
              const word = dragPath.map(p => board[p.row][p.col]).join("");
-             // Slight delay or immediate? Immediate is snappier.
-             handleSubmit(undefined, word);
+             // Pass the dragPath as the explicit path for feedback location
+             handleSubmit(undefined, word, dragPath);
         }
         setDragPath(null);
     }
@@ -276,6 +306,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
             board={board}
             highlightedCells={highlightedCells}
             onInteraction={handleInteraction}
+            feedback={feedback}
           />
         </div>
       </div>
