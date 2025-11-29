@@ -21,7 +21,7 @@ export function BoardComponent({ board, highlightedCells = [] }: BoardProps) {
             <div
               key={`${rowIndex}-${colIndex}`}
               className={cn(
-                "flex aspect-square items-center justify-center text-3xl font-bold uppercase transition-colors duration-300",
+                "flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-300",
                 "border-b border-r border-[#E0E0E0]",
                 // Remove right border for last column, bottom border for last row
                 colIndex === 4 && "border-r-0",
