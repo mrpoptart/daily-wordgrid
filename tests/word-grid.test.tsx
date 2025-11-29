@@ -30,8 +30,7 @@ describe("WordGrid", () => {
     const input = screen.getByLabelText(/word/i);
     fireEvent.change(input, { target: { value: "TEST" } });
 
-    const submitButton = screen.getByRole("button", { name: /submit/i });
-    fireEvent.click(submitButton);
+    fireEvent.keyDown(input, { key: " " });
 
     await waitFor(() => {
         expect(screen.getByText("TEST")).toBeInTheDocument();
@@ -67,8 +66,7 @@ describe("WordGrid", () => {
     const input = screen.getByLabelText(/word/i);
     fireEvent.change(input, { target: { value: "ZZZZ" } });
 
-    const submitButton = screen.getByRole("button", { name: /submit/i });
-    fireEvent.click(submitButton);
+    fireEvent.keyDown(input, { key: "Enter" });
 
     // Should verify toast error or no word added
     // Toasts are hard to test with just screen.getByText depending on the library
@@ -82,8 +80,7 @@ describe("WordGrid", () => {
     const input = screen.getByLabelText(/word/i);
     fireEvent.change(input, { target: { value: "TES" } });
 
-    const submitButton = screen.getByRole("button", { name: /submit/i });
-    fireEvent.click(submitButton);
+    fireEvent.keyDown(input, { key: "Enter" });
 
     expect(screen.queryByText("TES")).not.toBeInTheDocument();
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -28,6 +28,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [input, setInput] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [lastFoundWord, setLastFoundWord] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Load initial state
   useEffect(() => {
@@ -145,6 +146,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
     if (trimmed.length < MIN_PATH_LENGTH) {
       toast.error("Too short", { description: `Minimum ${MIN_PATH_LENGTH} letters` });
+      setInput("");
       return;
     }
 
@@ -159,6 +161,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     const path = findPathForWord(board, trimmed);
     if (!path) {
       toast.error("Not on board");
+      setInput("");
       return;
     }
 
@@ -170,6 +173,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
        } else {
          toast.error("Invalid word");
        }
+       setInput("");
        return;
     }
 
@@ -215,7 +219,10 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+    <div
+      className="grid gap-8 lg:grid-cols-[1fr_400px]"
+      onClick={() => inputRef.current?.focus()}
+    >
       {/* Board Column */}
       <div className="flex justify-center lg:justify-start">
         <div className="w-full max-w-[500px]">
@@ -230,6 +237,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       {/* Action Panel Column */}
       <div className="w-full">
         <ActionPanel
+          inputRef={inputRef}
           input={input}
           onInputChange={setInput}
           onSubmit={handleSubmit}

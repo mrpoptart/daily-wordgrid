@@ -3,10 +3,11 @@
 import { Timer } from "./Timer";
 import { FoundWords } from "./FoundWords";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+// Button removed as requested
 
 interface ActionPanelProps {
   input: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   onInputChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   scoreWithinTime: number;
@@ -20,6 +21,7 @@ interface ActionPanelProps {
 
 export function ActionPanel({
   input,
+  inputRef,
   onInputChange,
   onSubmit,
   scoreWithinTime,
@@ -32,26 +34,27 @@ export function ActionPanel({
 }: ActionPanelProps) {
   return (
     <div className="flex flex-col gap-8 p-4 md:p-0">
-      <div className="flex flex-col gap-2">
-        <label htmlFor="word-input" className="text-sm font-medium text-[#1A1A1A]">
+      <div className="sr-only">
+        <label htmlFor="word-input">
           Word
         </label>
-        <form onSubmit={onSubmit} className="flex gap-2">
+        <form onSubmit={onSubmit}>
           <Input
+            ref={inputRef}
             id="word-input"
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === ' ') {
+                e.preventDefault();
+                onSubmit(e as unknown as React.FormEvent);
+              }
+            }}
             placeholder="enter word"
-            className="border-[#E0E0E0] bg-white text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#3A7AFE] focus-visible:ring-offset-0"
+            className="opacity-0 absolute h-1 w-1 -z-10 pointer-events-none"
             autoComplete="off"
             autoFocus
           />
-          <Button
-            type="submit"
-            className="bg-[#1A1A1A] text-white hover:bg-[#333333]"
-          >
-            Submit
-          </Button>
         </form>
       </div>
 
