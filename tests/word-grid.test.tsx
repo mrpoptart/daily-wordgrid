@@ -27,7 +27,7 @@ describe("WordGrid", () => {
   it("allows typing a word and submitting", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i);
+    const input = screen.getByPlaceholderText(/enter word/i);
     fireEvent.change(input, { target: { value: "TEST" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
@@ -42,7 +42,7 @@ describe("WordGrid", () => {
   it("highlights the board when typing a valid word", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i);
+    const input = screen.getByPlaceholderText(/enter word/i);
     fireEvent.change(input, { target: { value: "TEST" } });
 
     // Assuming highlighted cells have a specific class or style.
@@ -64,7 +64,7 @@ describe("WordGrid", () => {
   it("does not submit invalid words and clears input", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i) as HTMLInputElement;
+    const input = screen.getByPlaceholderText(/enter word/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "ZZZZ" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
@@ -85,7 +85,7 @@ describe("WordGrid", () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
     // "AAAA" is on the board (row 1, cols 0-3) but likely not in dictionary
-    const input = screen.getByLabelText(/word/i) as HTMLInputElement;
+    const input = screen.getByPlaceholderText(/enter word/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "AAAA" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
@@ -101,7 +101,7 @@ describe("WordGrid", () => {
   it("does not submit words shorter than 4 letters", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    const input = screen.getByLabelText(/word/i);
+    const input = screen.getByPlaceholderText(/enter word/i);
     fireEvent.change(input, { target: { value: "TES" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
