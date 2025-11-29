@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -28,7 +28,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [input, setInput] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [lastFoundWord, setLastFoundWord] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Load initial state
   useEffect(() => {
@@ -137,9 +136,16 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     setIsTimeUp(true);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // Handle word submission
+  // Using useCallback to ensure it can be called from effects
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
     // Allow submission even if time is up
+
+    // Use current input value (from state, or check if we need to use ref, but state is fine here if updated correctly)
+    // Actually inside useCallback, we need 'input' in dependency, OR pass it as arg.
+    // Let's use the state variable 'input' directly, adding it to dependency array.
 
     const trimmed = input.trim();
     if (!trimmed) return;
@@ -147,7 +153,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     if (trimmed.length < MIN_PATH_LENGTH) {
       toast.error("Too short", { description: `Minimum ${MIN_PATH_LENGTH} letters` });
       setInput("");
-      inputRef.current?.focus();
       return;
     }
 
@@ -155,7 +160,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     if (words.some(w => w.word.toLowerCase() === trimmed.toLowerCase())) {
       toast.error("Already found");
       setInput("");
-      inputRef.current?.focus();
       return;
     }
 
@@ -164,7 +168,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     if (!path) {
       toast.error("Not on board");
       setInput("");
-      inputRef.current?.focus();
       return;
     }
 
@@ -177,7 +180,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
          toast.error("Invalid word");
        }
        setInput("");
-       inputRef.current?.focus();
        return;
     }
 
@@ -190,7 +192,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     setWords(prev => [...prev, newWord]);
     setLastFoundWord(word);
     setInput("");
-    inputRef.current?.focus();
     toast.success(`Found ${word}`, { description: `+${score} points` });
 
     // Persist
@@ -218,10 +219,53 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
         console.error("Failed to save word:", error);
         toast.error("Failed to save word");
         setWords(prev => prev.filter(w => w.word !== word));
-        // Reset last found word if failed? Maybe not needed for UX smooth flow
       }
     }
-  }
+  }, [input, words, board, boardDate, boardStartedAt]);
+
+  // Global Keyboard Listener
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Ignore if user is typing in some other input (unlikely in this page, but good practice)
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Modifier keys check (allow refresh, copy/paste etc)
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSubmit();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        setInput(prev => prev.slice(0, -1));
+      } else if (/^[a-zA-Z]$/.test(e.key)) {
+        e.preventDefault();
+        // Limit length? usually not needed for Boggle but let's be safe max 16 or 25
+        setInput(prev => {
+           if (prev.length >= 25) return prev;
+           return prev + e.key.toUpperCase();
+        });
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSubmit]);
+
+  // Handlers for Virtual Keyboard
+  const handleVirtualChar = (char: string) => {
+    setInput(prev => {
+        if (prev.length >= 25) return prev;
+        return prev + char.toUpperCase();
+    });
+  };
+
+  const handleVirtualDelete = () => {
+    setInput(prev => prev.slice(0, -1));
+  };
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
@@ -239,9 +283,8 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       {/* Action Panel Column */}
       <div className="w-full">
         <ActionPanel
-          inputRef={inputRef}
           input={input}
-          onInputChange={setInput}
+          onInputChange={setInput} // Still pass this if needed, but we mostly use global or virtual now
           onSubmit={handleSubmit}
           scoreWithinTime={scoreWithinTime}
           scoreAfterTime={scoreAfterTime}
@@ -250,6 +293,10 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
           wordsWithinTime={wordsWithinTime}
           wordsAfterTime={wordsAfterTime}
           isTimeUp={isTimeUp}
+          // New props for virtual keyboard support
+          onVirtualChar={handleVirtualChar}
+          onVirtualDelete={handleVirtualDelete}
+          onVirtualSubmit={() => handleSubmit()}
         />
       </div>
     </div>
