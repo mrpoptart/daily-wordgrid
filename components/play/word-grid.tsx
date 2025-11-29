@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -28,6 +28,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [input, setInput] = useState("");
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [lastFoundWord, setLastFoundWord] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Load initial state
   useEffect(() => {
@@ -145,6 +146,8 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
     if (trimmed.length < MIN_PATH_LENGTH) {
       toast.error("Too short", { description: `Minimum ${MIN_PATH_LENGTH} letters` });
+      setInput("");
+      inputRef.current?.focus();
       return;
     }
 
@@ -152,6 +155,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     if (words.some(w => w.word.toLowerCase() === trimmed.toLowerCase())) {
       toast.error("Already found");
       setInput("");
+      inputRef.current?.focus();
       return;
     }
 
@@ -159,6 +163,8 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     const path = findPathForWord(board, trimmed);
     if (!path) {
       toast.error("Not on board");
+      setInput("");
+      inputRef.current?.focus();
       return;
     }
 
@@ -170,6 +176,8 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
        } else {
          toast.error("Invalid word");
        }
+       setInput("");
+       inputRef.current?.focus();
        return;
     }
 
@@ -182,6 +190,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     setWords(prev => [...prev, newWord]);
     setLastFoundWord(word);
     setInput("");
+    inputRef.current?.focus();
     toast.success(`Found ${word}`, { description: `+${score} points` });
 
     // Persist
@@ -230,6 +239,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       {/* Action Panel Column */}
       <div className="w-full">
         <ActionPanel
+          inputRef={inputRef}
           input={input}
           onInputChange={setInput}
           onSubmit={handleSubmit}
