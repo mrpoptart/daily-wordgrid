@@ -24,3 +24,26 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+@keyframes float-up-fade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%); /* Start centered on letter */
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, calc(-50% - 25px)); /* Rise up 25px */
+  }
+  85% {
+    opacity: 1;
+    transform: translate(-50%, calc(-50% - 25px)); /* Hold */
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 35px)); /* Fade out moving up slightly */
+  }
+}
+
+.animate-float-up {
+  animation: float-up-fade 1.5s ease-out forwards;
+}
