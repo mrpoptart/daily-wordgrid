@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+
 import { fetchBoard } from "@/lib/board/fetch";
 import { WordGrid } from "@/components/play/word-grid";
 import { UserLastLoginUpdater } from "@/components/auth/user-last-login-updater";
@@ -10,7 +12,11 @@ export const metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function PlayPage() {
-  const boardData = await fetchBoard();
+  const requestHeaders = await headers();
+  const timeZone =
+    requestHeaders.get("x-vercel-ip-timezone") ?? requestHeaders.get("x-time-zone");
+
+  const boardData = await fetchBoard({ timeZone });
 
   if (!boardData) {
     return (

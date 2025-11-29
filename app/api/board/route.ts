@@ -6,6 +6,7 @@ import type { Board, BoardRow } from "@/lib/board/types";
 import {
   flattenBoard,
   resolveBoardDate,
+  resolveTimeZone,
   resolveDailySalt,
 } from "@/lib/board/api-helpers";
 
@@ -26,7 +27,11 @@ export type BoardResponse = {
 export async function GET(req?: Request) {
   const url = req ? new URL(req.url) : null;
   const dateParam = url ? url.searchParams.get("date") : null;
-  const date = resolveBoardDate(dateParam);
+  const timeZone = resolveTimeZone(
+    url ? url.searchParams.get("tz") : null,
+    req?.headers.get("x-vercel-ip-timezone") ?? req?.headers.get("x-time-zone"),
+  );
+  const date = resolveBoardDate(dateParam, timeZone);
 
   const { salt, hasDailySalt } = resolveDailySalt();
   const seed = createHash("sha256").update(`${date}|${salt}`).digest("hex");

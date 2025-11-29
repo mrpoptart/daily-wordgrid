@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { resolveBoardDate } from "@/lib/board/api-helpers";
+import { resolveBoardDate, resolveTimeZone } from "@/lib/board/api-helpers";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 50;
@@ -126,8 +126,12 @@ export async function GET(req?: Request) {
   const url = req ? new URL(req.url) : null;
   const dateParam = url ? url.searchParams.get("date") : null;
   const limitParam = url ? url.searchParams.get("limit") : null;
+  const timeZone = resolveTimeZone(
+    url ? url.searchParams.get("tz") : null,
+    req?.headers.get("x-vercel-ip-timezone") ?? req?.headers.get("x-time-zone"),
+  );
 
-  const date = resolveBoardDate(dateParam);
+  const date = resolveBoardDate(dateParam, timeZone);
   const limit = resolveLimit(limitParam);
 
   if (limit === "invalid") {
