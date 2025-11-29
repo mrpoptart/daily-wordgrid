@@ -39,6 +39,8 @@ function formatDateForTimeZone(date: Date, timeZone: string): string {
   return formatter.format(date);
 }
 
+const DEFAULT_TIME_ZONE = "America/New_York";
+
 export function resolveBoardDate(
   dateParam: string | null | undefined,
   timeZone?: string | null,
@@ -47,11 +49,9 @@ export function resolveBoardDate(
   if (normalized) return normalized;
 
   const normalizedTimeZone = normalizeTimeZone(timeZone);
-  if (normalizedTimeZone) {
-    return formatDateForTimeZone(new Date(), normalizedTimeZone);
-  }
+  const effectiveTimeZone = normalizedTimeZone ?? DEFAULT_TIME_ZONE;
 
-  return formatDateUTC(new Date());
+  return formatDateForTimeZone(new Date(), effectiveTimeZone);
 }
 
 export function resolveTimeZone(

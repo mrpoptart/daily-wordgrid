@@ -24,9 +24,14 @@ describe("resolveBoardDate", () => {
     expect(date).toBe("2024-05-19");
   });
 
-  it("falls back to UTC when the time zone is invalid", () => {
+  it("falls back to Eastern time when no time zone is provided", () => {
+    const date = resolveBoardDate(null, null);
+    expect(date).toBe("2024-05-19");
+  });
+
+  it("falls back to Eastern time when the time zone is invalid", () => {
     const date = resolveBoardDate(null, "Totally/Invalid");
-    expect(date).toBe("2024-05-20");
+    expect(date).toBe("2024-05-19");
   });
 });
 

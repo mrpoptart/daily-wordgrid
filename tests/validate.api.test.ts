@@ -66,7 +66,7 @@ describe("POST /api/validate", () => {
 
   it("defaults date when omitted and indicates hasDailySalt=false", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(Date.UTC(2025, 0, 5)));
+    vi.setSystemTime(new Date(Date.UTC(2025, 0, 5, 12)));
 
     const res = await POST(
       new Request("http://localhost/api/validate", {
