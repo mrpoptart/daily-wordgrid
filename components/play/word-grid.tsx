@@ -145,6 +145,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
     if (trimmed.length < MIN_PATH_LENGTH) {
       toast.error("Too short", { description: `Minimum ${MIN_PATH_LENGTH} letters` });
+      setInput("");
       return;
     }
 
@@ -159,6 +160,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     const path = findPathForWord(board, trimmed);
     if (!path) {
       toast.error("Not on board");
+      setInput("");
       return;
     }
 
@@ -170,6 +172,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
        } else {
          toast.error("Invalid word");
        }
+       setInput("");
        return;
     }
 
