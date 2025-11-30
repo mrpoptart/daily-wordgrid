@@ -37,8 +37,7 @@ export function BoardPreview({
     highlightPath.map(([row, col]) => `${row}-${col}`),
   );
 
-  const resolvedFootnote =
-    footnote ?? (highlightPath.length > 0 ? "Highlighted path forms SOLVE" : null);
+  const resolvedFootnote = footnote;
 
   return (
     <div className={cn("space-y-4", className)}>
