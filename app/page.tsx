@@ -4,42 +4,20 @@ import { UserLastLoginUpdater } from "@/components/auth/user-last-login-updater"
 import { BoardPreview } from "@/components/landing/board-preview";
 import { Button } from "@/components/ui/button";
 
-const README_URL = "https://github.com/mrpoptart/daily-wordgrid#readme";
 const LOGIN_URL = "/login";
-
-const FEATURES = [
-  {
-    label: "Deterministic",
-    title: "One fair board for everyone",
-    description:
-      "Boards are seeded from the UTC date plus a server-only salt so every player solves the exact same puzzle while preventing spoofing.",
-  },
-  {
-    label: "Validation",
-    title: "Server-enforced word paths",
-    description:
-      "Submitted paths must honor Boggle-style adjacency, minimum length, and a SOWPODS dictionary check before they earn points.",
-  },
-  {
-    label: "Competition",
-    title: "Shareable daily scoring",
-    description:
-      "Scores and word lists are stored per user per day, enabling leaderboards and brag-worthy recap messages in under three minutes.",
-  },
-] as const;
 
 const FLOW = [
   {
-    title: "Log in with Supabase Auth",
-    detail: "Magic link or Google OAuth login.",
+    title: "Log in",
+    detail: "Use your email or Google account.",
   },
   {
-    title: "Study today's deterministic board",
-    detail: "25 letters, eight-direction adjacency, no tile reuse.",
+    title: "Find words",
+    detail: "Connect letters in any direction.",
   },
   {
-    title: "Submit words and share your score",
-    detail: "Server actions validate every path before persisting score + words.",
+    title: "Share score",
+    detail: "Compare with others on the leaderboard.",
   },
 ] as const;
 
@@ -52,9 +30,6 @@ const SCORING = [
 ] as const;
 
 export default async function Home() {
-  // We handle redirection in client component or check cookie/header if possible
-  // For now, removing SSR session check as auth is mostly client-side
-
   return (
     <div className="bg-slate-950 text-slate-100">
       <AuthRedirect />
@@ -62,28 +37,19 @@ export default async function Home() {
       <div className="mx-auto flex max-w-6xl flex-col gap-16 px-6 py-16 sm:py-20 lg:px-10">
         <header className="space-y-6 text-center lg:text-left">
           <span className="inline-flex items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200">
-            Boggle × Wordle
+            Daily Word Puzzle
           </span>
           <div className="space-y-4">
             <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
               Daily Wordgrid
             </h1>
             <p className="text-lg leading-relaxed text-slate-300 sm:text-xl">
-              A deterministic 5×5 board that blends the path-finding rush of Boggle with Wordle's "one shot per day" ritual.
-              Solve in under three minutes, validate every path server-side, and climb the daily leaderboard.
+              Find as many words as you can in 3 minutes. Everyone plays the same board. One chance per day.
             </p>
           </div>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
             <Button asChild className="w-full px-8 sm:w-auto">
-              <Link href={LOGIN_URL}>Log in to play</Link>
-            </Button>
-            <Button asChild variant="secondary" className="w-full sm:w-auto">
-              <Link href="/api/board">Preview today's board API</Link>
-            </Button>
-            <Button asChild variant="ghost" className="w-full sm:w-auto">
-              <Link href={README_URL} target="_blank" rel="noreferrer">
-                Read the technical plan
-              </Link>
+              <Link href={LOGIN_URL}>Play Now</Link>
             </Button>
           </div>
         </header>
@@ -92,23 +58,18 @@ export default async function Home() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-emerald-500/5">
             <div className="flex flex-col gap-4 pb-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.4em] text-emerald-200">Sample grid</p>
-                <p className="text-2xl font-semibold text-white">Deterministic seed • 5×5 board</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-right">
-                <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Session</p>
-                <p className="text-3xl font-semibold text-emerald-300">&lt; 3m</p>
-                <p className="text-xs text-slate-400">Average play time</p>
+                <p className="text-sm uppercase tracking-[0.4em] text-emerald-200">How to play</p>
+                <p className="text-2xl font-semibold text-white">Connect letters to form words</p>
               </div>
             </div>
             <BoardPreview
-              caption="Sample deterministic board"
+              caption="Sample board"
               className="mx-auto"
             />
             <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
-              <span className="rounded-full border border-white/15 px-3 py-1">Min word length: 4 letters</span>
-              <span className="rounded-full border border-white/15 px-3 py-1">No tile reuse per word</span>
-              <span className="rounded-full border border-white/15 px-3 py-1">Eight-direction adjacency</span>
+              <span className="rounded-full border border-white/15 px-3 py-1">4+ letters</span>
+              <span className="rounded-full border border-white/15 px-3 py-1">No reusing tiles</span>
+              <span className="rounded-full border border-white/15 px-3 py-1">Connect any direction</span>
             </div>
           </div>
 
@@ -124,7 +85,6 @@ export default async function Home() {
                   </div>
                 ))}
               </dl>
-              <p className="mt-4 text-xs text-slate-400">Same table used by the API + README specs.</p>
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -145,16 +105,6 @@ export default async function Home() {
               </ol>
             </div>
           </div>
-        </section>
-
-        <section className="grid gap-6 md:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <article key={feature.title} className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-lg shadow-black/20">
-              <p className="text-xs uppercase tracking-[0.4em] text-emerald-200">{feature.label}</p>
-              <h3 className="mt-3 text-xl font-semibold text-white">{feature.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">{feature.description}</p>
-            </article>
-          ))}
         </section>
       </div>
     </div>
