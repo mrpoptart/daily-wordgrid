@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 
 import { fetchBoard } from "@/lib/board/fetch";
 import { resolveBoardDate } from "@/lib/board/api-helpers";
@@ -14,11 +13,7 @@ function formatDisplayDate(boardDate: string): string {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const timeZone =
-    requestHeaders.get("x-vercel-ip-timezone") ?? requestHeaders.get("x-time-zone");
-
-  const boardDate = resolveBoardDate(null, timeZone);
+  const boardDate = resolveBoardDate(null);
 
   return {
     title: `Play Daily Word Grid for ${formatDisplayDate(boardDate)}.`,
@@ -29,11 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = 'force-dynamic';
 
 export default async function PlayPage() {
-  const requestHeaders = await headers();
-  const timeZone =
-    requestHeaders.get("x-vercel-ip-timezone") ?? requestHeaders.get("x-time-zone");
-
-  const boardData = await fetchBoard({ timeZone });
+  const boardData = await fetchBoard();
 
   if (!boardData) {
     return (

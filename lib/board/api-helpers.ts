@@ -41,17 +41,22 @@ function formatDateForTimeZone(date: Date, timeZone: string): string {
 
 const DEFAULT_TIME_ZONE = "America/New_York";
 
+/**
+ * Resolves the board date.
+ * It ignores the user's timezone and enforces Eastern Time (America/New_York) as the global standard.
+ * The timeZone parameter is kept for backward compatibility/testing but is effectively ignored.
+ */
 export function resolveBoardDate(
   dateParam: string | null | undefined,
-  timeZone?: string | null,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _timeZone?: string | null,
 ): string {
   const normalized = normalizeDateInput(dateParam);
   if (normalized) return normalized;
 
-  const normalizedTimeZone = normalizeTimeZone(timeZone);
-  const effectiveTimeZone = normalizedTimeZone ?? DEFAULT_TIME_ZONE;
-
-  return formatDateForTimeZone(new Date(), effectiveTimeZone);
+  // Always use DEFAULT_TIME_ZONE (America/New_York)
+  // This ensures everyone sees the same board that changes at 12am ET.
+  return formatDateForTimeZone(new Date(), DEFAULT_TIME_ZONE);
 }
 
 export function resolveTimeZone(
