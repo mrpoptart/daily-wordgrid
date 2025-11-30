@@ -22,10 +22,10 @@ export function TimeUpModal({ score, wordsFound, onShare, onKeepPlaying, isOpen 
         </p>
 
         <div className="flex flex-col gap-3">
-          <Button onClick={onShare} className="w-full bg-[#1A1A1A] text-white hover:bg-[#333333]">
+          <Button type="button" onClick={onShare} className="w-full bg-[#1A1A1A] text-white hover:bg-[#333333]">
             Share Score
           </Button>
-          <Button onClick={onKeepPlaying} className="w-full bg-[#1A1A1A] text-white hover:bg-[#333333]">
+          <Button type="button" onClick={onKeepPlaying} className="w-full bg-[#1A1A1A] text-white hover:bg-[#333333]">
             Keep Playing
           </Button>
         </div>

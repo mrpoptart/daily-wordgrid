@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -135,10 +135,15 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     return [];
   }, [input, board, dragPath]);
 
-  function handleTimeUp() {
+  const handleTimeUp = useCallback(() => {
     setIsTimeUp(true);
-    setShowTimeUpModal(true);
-  }
+    if (typeof window !== 'undefined') {
+      const key = `wordgrid-time-up-seen-${boardDate}`;
+      if (!localStorage.getItem(key)) {
+        setShowTimeUpModal(true);
+      }
+    }
+  }, [boardDate]);
 
   async function handleShare() {
     const text = `I found ${wordsWithinTime.length} words for ${scoreWithinTime} points in Daily Wordgrid!`;
@@ -165,6 +170,9 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
   function handleKeepPlaying() {
     setShowTimeUpModal(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`wordgrid-time-up-seen-${boardDate}`, 'true');
+    }
     inputRef.current?.focus();
   }
 
