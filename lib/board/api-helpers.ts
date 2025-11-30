@@ -44,13 +44,12 @@ const DEFAULT_TIME_ZONE = "America/New_York";
 /**
  * Resolves the board date.
  * It ignores the user's timezone and enforces Eastern Time (America/New_York) as the global standard.
- * The timeZone parameter is kept for backward compatibility/testing but is effectively ignored
- * if we want to strictly enforce ET, but I'll update it to be optional and default to ET,
- * effectively deprecating its usage from external callers.
+ * The timeZone parameter is kept for backward compatibility/testing but is effectively ignored.
  */
 export function resolveBoardDate(
   dateParam: string | null | undefined,
-  _timeZone?: string | null, // Ignored, but kept for signature compatibility if needed, though I'm changing it.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _timeZone?: string | null,
 ): string {
   const normalized = normalizeDateInput(dateParam);
   if (normalized) return normalized;
