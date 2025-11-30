@@ -139,8 +139,10 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
               data-row={rowIndex}
               data-col={colIndex}
               className={cn(
-                "relative flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-full border border-[#E0E0E0]",
-                highlighted ? "bg-[#3A7AFE] text-white border-[#3A7AFE]" : "bg-[#FAFAFA] text-[#1A1A1A]",
+                "relative flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-full border",
+                highlighted
+                  ? "bg-emerald-500 text-white border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                  : "bg-slate-900 text-slate-100 border-white/10 hover:border-emerald-500/50",
                 "cursor-pointer" // Indicate interactivity
               )}
             >
@@ -149,12 +151,12 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
                 <div className="absolute top-1/2 left-1/2 z-50 pointer-events-none animate-float-up">
                     {/* Content based on feedback.type */}
                     {feedback.type === 'success' && (
-                       <div className="bg-white border border-gray-200 text-green-600 font-bold px-2 py-0.5 rounded-full shadow-lg text-sm flex items-center whitespace-nowrap">
+                       <div className="bg-emerald-500 text-white font-bold px-3 py-1 rounded-full shadow-lg shadow-black/20 text-sm flex items-center whitespace-nowrap border border-white/20">
                            {feedback.message}
                        </div>
                     )}
                     {feedback.type === 'duplicate' && (
-                        <div className="bg-green-500 rounded-full p-1 text-white shadow-lg">
+                        <div className="bg-amber-500 rounded-full p-1 text-white shadow-lg border border-white/20">
                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" className="w-5 h-5">
                               <polyline points="20 6 9 17 4 12" />
                            </svg>

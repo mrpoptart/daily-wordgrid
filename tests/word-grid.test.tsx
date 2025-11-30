@@ -57,7 +57,7 @@ describe("WordGrid", () => {
 
     // Wait for highlight update
     await waitFor(() => {
-        expect(firstT).toHaveClass("bg-[#3A7AFE]");
+        expect(firstT).toHaveClass("bg-emerald-500");
     });
   });
 
