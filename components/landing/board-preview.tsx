@@ -5,7 +5,7 @@ export type Coordinate = readonly [number, number];
 export type BoardPreviewProps = {
   board?: readonly (readonly string[])[];
   highlightPath?: readonly Coordinate[];
-  caption?: string;
+  caption?: string | null;
   footnote?: string | null;
   className?: string;
 };
@@ -37,15 +37,14 @@ export function BoardPreview({
     highlightPath.map(([row, col]) => `${row}-${col}`),
   );
 
-  const resolvedFootnote =
-    footnote ?? (highlightPath.length > 0 ? "Highlighted path forms SOLVE" : null);
+  const resolvedFootnote = footnote;
 
   return (
     <div className={cn("space-y-4", className)}>
       <div
         role="grid"
         aria-label="Daily Wordgrid preview board"
-        className="grid grid-cols-5 gap-3"
+        className="grid grid-cols-5 gap-2"
       >
         {board.map((row, rowIndex) =>
           row.map((letter, colIndex) => {
@@ -57,10 +56,10 @@ export function BoardPreview({
                 role="gridcell"
                 aria-label={`Row ${rowIndex + 1}, Column ${colIndex + 1}: ${letter}${isHighlighted ? " (highlighted path)" : ""}`}
                 className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-2xl border text-xl font-semibold tracking-[0.1em]",
+                  "relative flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-full border",
                   isHighlighted
-                    ? "border-emerald-400/70 bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30"
-                    : "border-white/10 bg-white/5 text-white/90",
+                    ? "bg-emerald-500 text-white border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                    : "bg-slate-900 text-slate-100 border-white/10",
                 )}
               >
                 {letter}
@@ -69,14 +68,17 @@ export function BoardPreview({
           }),
         )}
       </div>
-      <div className="text-center text-sm text-slate-300">
-        <p>{caption}</p>
-        {resolvedFootnote ? (
-          <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
-            {resolvedFootnote}
-          </p>
-        ) : null}
-      </div>
+      {/* Only render caption container if there is content */}
+      {(caption || resolvedFootnote) && (
+        <div className="text-center text-sm text-slate-300">
+          {caption && <p>{caption}</p>}
+          {resolvedFootnote && (
+            <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
+              {resolvedFootnote}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
