@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
