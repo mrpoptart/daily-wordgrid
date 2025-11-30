@@ -50,7 +50,7 @@ A daily, deterministic, 5×5 word-finding game that blends the path-finding rule
 - Seeded by the calendar date plus a server-side salt to prevent spoofing
 - Example approach:
   - `seed = SHA256(YYYY-MM-DD + BOARD_DAILY_SALT)`
-  - Use a seeded PRNG to draw letters by frequency distribution
+- Use a seeded PRNG to shuffle a fixed set of physical dice and roll one face per die
   - Persist only the seed and/or board for auditing; derive board on-demand
 
 ### Data Model (Supabase Tables)
