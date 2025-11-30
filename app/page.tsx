@@ -1,10 +1,7 @@
-import Link from "next/link";
 import { AuthRedirect } from "@/components/auth/auth-redirect";
 import { UserLastLoginUpdater } from "@/components/auth/user-last-login-updater";
+import { LoginCard } from "@/components/auth/login-card";
 import { BoardPreview } from "@/components/landing/board-preview";
-import { Button } from "@/components/ui/button";
-
-const LOGIN_URL = "/login";
 
 const FLOW = [
   {
@@ -47,10 +44,8 @@ export default async function Home() {
               Find as many words as you can in 3 minutes. Everyone plays the same board. One chance per day.
             </p>
           </div>
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
-            <Button asChild className="w-full px-8 sm:w-auto">
-              <Link href={LOGIN_URL}>Play Now</Link>
-            </Button>
+          <div className="w-full max-w-md mx-auto lg:mx-0">
+            <LoginCard redirectPath="/play" title="Play now" description="Login to start playing." />
           </div>
         </header>
 
