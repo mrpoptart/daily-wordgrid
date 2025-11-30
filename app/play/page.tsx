@@ -44,7 +44,7 @@ export default async function PlayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A] font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <UserLastLoginUpdater />
       <div className="mx-auto max-w-5xl px-4 py-8 lg:py-16">
         <WordGrid board={boardData.board} boardDate={boardData.date} />

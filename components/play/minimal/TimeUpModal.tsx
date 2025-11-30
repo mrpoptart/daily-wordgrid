@@ -15,17 +15,17 @@ export function TimeUpModal({ score, wordsFound, onShare, onKeepPlaying, isOpen 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-6 shadow-xl">
-        <h2 className="mb-2 text-center text-2xl font-bold text-gray-900">Time's Up!</h2>
-        <p className="mb-6 text-center text-gray-600">
-          You found <span className="font-semibold text-black">{wordsFound}</span> words for <span className="font-semibold text-black">{score}</span> points!
+      <div className="w-full max-w-sm rounded-lg border border-white/10 bg-slate-900 p-6 shadow-xl shadow-black/50">
+        <h2 className="mb-2 text-center text-2xl font-bold text-white">Time's Up!</h2>
+        <p className="mb-6 text-center text-slate-300">
+          You found <span className="font-semibold text-white">{wordsFound}</span> words for <span className="font-semibold text-emerald-300">{score}</span> points!
         </p>
 
         <div className="flex flex-col gap-3">
-          <Button type="button" onClick={onShare} className="w-full bg-[#1A1A1A] text-white hover:bg-[#333333]">
+          <Button type="button" onClick={onShare} className="w-full bg-emerald-500 text-white hover:bg-emerald-600">
             Share Score
           </Button>
-          <Button type="button" onClick={onKeepPlaying} className="w-full bg-[#1A1A1A] text-white hover:bg-[#333333]">
+          <Button type="button" onClick={onKeepPlaying} className="w-full bg-slate-800 text-white hover:bg-slate-700">
             Keep Playing
           </Button>
         </div>

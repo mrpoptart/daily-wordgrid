@@ -44,28 +44,28 @@ export function ActionPanel({
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             placeholder="enter word"
-            className="border-[#E0E0E0] bg-white text-[#1A1A1A] placeholder:text-gray-400 focus-visible:ring-[#3A7AFE] focus-visible:ring-offset-0"
+            className="border-white/10 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
             autoComplete="off"
             autoFocus
           />
           <Button
             type="submit"
-            className="bg-[#1A1A1A] text-white hover:bg-[#333333]"
+            className="bg-emerald-500 text-white hover:bg-emerald-600"
           >
             Submit
           </Button>
         </form>
       </div>
 
-      <div className="flex items-center justify-between border-y border-[#E0E0E0] py-4">
-        <div className="flex-1 text-left text-sm text-[#1A1A1A]">
-          <span className="font-semibold">Score:</span> {scoreWithinTime} pts
+      <div className="flex items-center justify-between border-y border-white/10 py-4">
+        <div className="flex-1 text-left text-sm text-slate-100">
+          <span className="font-semibold text-emerald-300">Score:</span> {scoreWithinTime} pts
           {scoreAfterTime > 0 && (
-             <span className="ml-1 text-gray-500">(+{scoreAfterTime})</span>
+             <span className="ml-1 text-slate-500">(+{scoreAfterTime})</span>
           )}
         </div>
-        <div className="flex flex-1 justify-center items-center gap-2 text-sm text-[#1A1A1A]">
-          <span className="font-semibold">Time:</span>{" "}
+        <div className="flex flex-1 justify-center items-center gap-2 text-sm text-slate-100">
+          <span className="font-semibold text-emerald-300">Time:</span>{" "}
           <Timer boardStartedAt={boardStartedAt} onTimeUp={onTimeUp} />
         </div>
         <div className="flex flex-1 justify-end">
@@ -73,7 +73,7 @@ export function ActionPanel({
             <button
               onClick={onShare}
               aria-label="Share"
-              className="flex items-center gap-2 text-sm text-gray-500 hover:text-black"
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-emerald-300 transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -99,7 +99,7 @@ export function ActionPanel({
       <FoundWords wordsWithinTime={wordsWithinTime} wordsAfterTime={wordsAfterTime} />
 
       {isTimeUp && (
-        <div className="mt-4 rounded border border-[#E0E0E0] bg-gray-50 p-3 text-center text-sm font-semibold text-[#1A1A1A]">
+        <div className="mt-4 rounded border border-white/10 bg-slate-900/50 p-3 text-center text-sm font-semibold text-emerald-300">
           Time’s Up! You can keep playing.
         </div>
       )}

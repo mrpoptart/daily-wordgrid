@@ -49,7 +49,7 @@ export function Timer({ boardStartedAt, onTimeUp }: TimerProps) {
   const formattedTime = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
   return (
-    <span className="font-mono text-[#1A1A1A]">
+    <span className="font-mono text-slate-100">
       {formattedTime}
     </span>
   );
