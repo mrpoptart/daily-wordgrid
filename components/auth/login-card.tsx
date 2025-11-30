@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
 const STATUS_MESSAGES = {
-  idle: "Enter your email to receive a magic link.",
+  idle: "",
   loading: "Sending magic link...",
   oauth: "Redirecting to Google...",
   success: "Check your email for the magic link!",
@@ -25,7 +25,7 @@ type FormState = keyof typeof STATUS_MESSAGES | "error";
 export function LoginCard({
   className,
   title = "Log in",
-  description = "Use Supabase Auth to start playing.",
+  description = "",
   redirectPath = "/",
 }: LoginCardProps) {
   const [email, setEmail] = useState("");
@@ -86,14 +86,13 @@ export function LoginCard({
   return (
     <div className={cn("rounded-3xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-emerald-500/10", className)}>
       <div className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">Supabase Auth</p>
         <h1 className="text-3xl font-semibold text-white">{title}</h1>
-        <p className="text-sm text-slate-300">{description}</p>
+        {description && <p className="text-sm text-slate-300">{description}</p>}
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="space-y-2 text-sm font-medium text-slate-200" htmlFor="email">
-          Email address
+          <span className="sr-only">Email address</span>
           <Input
             id="email"
             type="email"
@@ -123,7 +122,7 @@ export function LoginCard({
         </Button>
       </div>
 
-      <p className={cn("mt-4 text-sm", state === "error" ? "text-red-300" : state === "success" ? "text-emerald-300" : "text-slate-300")}>{statusMessage}</p>
+      {statusMessage && <p className={cn("mt-4 text-sm", state === "error" ? "text-red-300" : state === "success" ? "text-emerald-300" : "text-slate-300")}>{statusMessage}</p>}
     </div>
   );
 }
