@@ -15,9 +15,10 @@ interface ActionPanelProps {
   onTimeUp: () => void;
   wordsWithinTime: { word: string; score: number }[];
   wordsAfterTime: { word: string; score: number }[];
-  isTimeUp: boolean;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   onShare?: () => void;
+  userEmail: string | null;
+  onLogout: () => void;
 }
 
 export function ActionPanel({
@@ -30,9 +31,10 @@ export function ActionPanel({
   onTimeUp,
   wordsWithinTime,
   wordsAfterTime,
-  isTimeUp,
   inputRef,
-  onShare
+  onShare,
+  userEmail,
+  onLogout
 }: ActionPanelProps) {
   return (
     <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 md:p-0">
@@ -98,9 +100,19 @@ export function ActionPanel({
 
       <FoundWords wordsWithinTime={wordsWithinTime} wordsAfterTime={wordsAfterTime} />
 
-      {isTimeUp && (
-        <div className="mt-4 rounded border border-white/10 bg-slate-900/50 p-3 text-center text-sm font-semibold text-emerald-300">
-          Time’s Up! You can keep playing.
+      {userEmail && (
+        <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded border border-white/10 bg-slate-900/50 p-4 text-sm sm:flex-row">
+          <div className="text-slate-400">
+            Logged in as <span className="font-medium text-slate-100">{userEmail}</span>
+          </div>
+          <Button
+            onClick={onLogout}
+            variant="ghost"
+            size="sm"
+            className="h-8 text-slate-400 hover:text-white hover:bg-white/10"
+          >
+            Logout
+          </Button>
         </div>
       )}
     </div>

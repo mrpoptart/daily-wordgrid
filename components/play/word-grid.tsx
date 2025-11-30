@@ -28,15 +28,20 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [boardStartedAt, setBoardStartedAt] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [dragPath, setDragPath] = useState<{ row: number; col: number }[] | null>(null);
+  // isTimeUp is tracked to potentially show modal, but mostly handled by Timer callback
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load initial state
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
+        setUserEmail(data.user.email ?? null);
+
         // Fetch words
         supabase
           .from("words")
@@ -326,6 +331,11 @@ ${breakdown}`;
     }
   }
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
+
   const handleInteraction = (row: number, col: number, type: InteractionType) => {
     if (type === 'start') {
         const letter = board[row][col];
@@ -403,8 +413,9 @@ ${breakdown}`;
           onTimeUp={handleTimeUp}
           wordsWithinTime={wordsWithinTime}
           wordsAfterTime={wordsAfterTime}
-          isTimeUp={isTimeUp}
           onShare={handleShare}
+          userEmail={userEmail}
+          onLogout={handleLogout}
         />
       </div>
 
