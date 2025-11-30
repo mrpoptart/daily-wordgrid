@@ -58,20 +58,22 @@ export function ActionPanel({
       </div>
 
       <div className="flex items-center justify-between border-y border-[#E0E0E0] py-4">
-        <div className="text-sm text-[#1A1A1A]">
+        <div className="flex-1 text-left text-sm text-[#1A1A1A]">
           <span className="font-semibold">Score:</span> {scoreWithinTime} pts
           {scoreAfterTime > 0 && (
              <span className="ml-1 text-gray-500">(+{scoreAfterTime})</span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-sm text-[#1A1A1A]">
+        <div className="flex flex-1 justify-center items-center gap-2 text-sm text-[#1A1A1A]">
           <span className="font-semibold">Time:</span>{" "}
           <Timer boardStartedAt={boardStartedAt} onTimeUp={onTimeUp} />
+        </div>
+        <div className="flex flex-1 justify-end">
           {onShare && (
             <button
               onClick={onShare}
               aria-label="Share"
-              className="ml-2 text-gray-500 hover:text-black"
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-black"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -88,6 +90,7 @@ export function ActionPanel({
                 <polyline points="16 6 12 2 8 6" />
                 <line x1="12" x2="12" y1="2" y2="15" />
               </svg>
+              <span>Share</span>
             </button>
           )}
         </div>
