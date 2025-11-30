@@ -364,6 +364,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
           wordsWithinTime={wordsWithinTime}
           wordsAfterTime={wordsAfterTime}
           isTimeUp={isTimeUp}
+          onShare={handleShare}
         />
       </div>
 

@@ -17,6 +17,7 @@ interface ActionPanelProps {
   wordsAfterTime: { word: string; score: number }[];
   isTimeUp: boolean;
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  onShare?: () => void;
 }
 
 export function ActionPanel({
@@ -30,7 +31,8 @@ export function ActionPanel({
   wordsWithinTime,
   wordsAfterTime,
   isTimeUp,
-  inputRef
+  inputRef,
+  onShare
 }: ActionPanelProps) {
   return (
     <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 md:p-0">
@@ -62,9 +64,32 @@ export function ActionPanel({
              <span className="ml-1 text-gray-500">(+{scoreAfterTime})</span>
           )}
         </div>
-        <div className="text-sm text-[#1A1A1A]">
+        <div className="flex items-center gap-2 text-sm text-[#1A1A1A]">
           <span className="font-semibold">Time:</span>{" "}
           <Timer boardStartedAt={boardStartedAt} onTimeUp={onTimeUp} />
+          {onShare && (
+            <button
+              onClick={onShare}
+              aria-label="Share"
+              className="ml-2 text-gray-500 hover:text-black"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" x2="12" y1="2" y2="15" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
