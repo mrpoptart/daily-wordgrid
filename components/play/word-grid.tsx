@@ -146,12 +146,52 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   }, [boardDate]);
 
   async function handleShare() {
-    const text = `I found ${wordsWithinTime.length} words for ${scoreWithinTime} points in Daily Wordgrid!`;
+    // Generate breakdown by length
+    const lengthCounts = new Map<number, number>();
+    wordsWithinTime.forEach(w => {
+      const len = w.word.length;
+      lengthCounts.set(len, (lengthCounts.get(len) || 0) + 1);
+    });
+
+    // Sort lengths
+    const sortedLengths = Array.from(lengthCounts.keys()).sort((a, b) => a - b);
+
+    let breakdown = "";
+    sortedLengths.forEach(len => {
+        const count = lengthCounts.get(len);
+        let emoji = "";
+        if (len === 4) emoji = "4️⃣";
+        else if (len === 5) emoji = "5️⃣";
+        else if (len === 6) emoji = "6️⃣";
+        else if (len === 7) emoji = "7️⃣";
+        else if (len === 8) emoji = "8️⃣";
+        else if (len === 9) emoji = "9️⃣";
+        else if (len === 10) emoji = "🔟";
+        else emoji = `${len}`; // Fallback
+
+        if (emoji) {
+            breakdown += `${emoji}: ${count} ${count === 1 ? 'word' : 'words'}\n`;
+        }
+    });
+
+    const text = `I got ${scoreWithinTime} points on Daily Word Grid today!
+${breakdown}`;
+
+    // Note: We append URL to text for clipboard, but for shareData it might depend on platform behavior.
+    // Usually shareData uses 'url' field.
+    // The request asked to include URL in the message.
+    // "Include the total number of points, and then the number of each word length as an emoji and then the number of words of that length. ... URL GOES HERE"
+
     const url = window.location.href;
+    const fullText = `${text}${url}`;
+
     const shareData = {
       title: 'Daily Wordgrid',
-      text,
-      url,
+      text: fullText,
+      // Some platforms ignore 'url' if it's in text, or vice versa.
+      // But typically we should put it in the url field for better integration.
+      // However, if we put it in text, it's safer for copying.
+      // Let's use the requested format in 'text'.
     };
 
     if (navigator.share) {
@@ -164,7 +204,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     }
 
     // Fallback to clipboard
-    navigator.clipboard.writeText(`${text} ${url}`);
+    navigator.clipboard.writeText(fullText);
     toast.success("Score copied to clipboard!");
   }
 
