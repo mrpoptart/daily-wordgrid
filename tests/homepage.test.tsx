@@ -20,8 +20,10 @@ describe("Home page", () => {
       screen.getByRole("heading", { name: /daily wordgrid/i }),
     ).toBeInTheDocument();
 
-    const loginLink = screen.getByRole("link", { name: /play now/i });
-    expect(loginLink).toBeInTheDocument();
-    expect(loginLink).toHaveAttribute("href", "/login");
+    const loginHeading = screen.getByRole("heading", { name: /play now/i });
+    expect(loginHeading).toBeInTheDocument();
+
+    const emailInput = screen.getByLabelText(/email address/i);
+    expect(emailInput).toBeInTheDocument();
   });
 });

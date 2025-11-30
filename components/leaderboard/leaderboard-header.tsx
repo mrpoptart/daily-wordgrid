@@ -14,7 +14,7 @@ export function LeaderboardHeader() {
           <Link href="/">Back to landing</Link>
         </Button>
         <Button asChild>
-          <Link href="/login">Log in to play</Link>
+          <Link href="/">Log in to play</Link>
         </Button>
       </div>
     </header>
