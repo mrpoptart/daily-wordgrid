@@ -117,7 +117,7 @@ export function LoginCard({
           <span className="h-px flex-1 bg-slate-800" aria-hidden />
         </div>
 
-        <Button type="button" variant="outline" className="w-full" disabled={isDisabled} onClick={handleGoogleLogin}>
+        <Button type="button" variant="secondary" className="w-full" disabled={isDisabled} onClick={handleGoogleLogin}>
           Continue with Google
         </Button>
       </div>
