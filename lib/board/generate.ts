@@ -1,59 +1,33 @@
 import { createPrng } from "@/lib/board/prng";
 import type { Board } from "@/lib/board/types";
 
-// Letter frequency weights (approximate English letter frequencies)
-// Values are relative; only ratios matter.
-const LETTER_WEIGHTS: Record<string, number> = {
-  A: 8167,
-  B: 1492,
-  C: 2782,
-  D: 4253,
-  E: 12702,
-  F: 2228,
-  G: 2015,
-  H: 6094,
-  I: 6966,
-  J: 153,
-  K: 772,
-  L: 4025,
-  M: 2406,
-  N: 6749,
-  O: 7507,
-  P: 1929,
-  Q: 95,
-  R: 5987,
-  S: 6327,
-  T: 9056,
-  U: 2758,
-  V: 978,
-  W: 2360,
-  X: 150,
-  Y: 1974,
-  Z: 74,
-};
-
-const LETTERS = Object.keys(LETTER_WEIGHTS);
-const CUMULATIVE: { letter: string; cum: number }[] = (() => {
-  let sum = 0;
-  return LETTERS.map((letter) => {
-    sum += LETTER_WEIGHTS[letter];
-    return { letter, cum: sum };
-  });
-})();
-const TOTAL_WEIGHT = CUMULATIVE[CUMULATIVE.length - 1].cum;
-
-function pickLetter(prng: ReturnType<typeof createPrng>): string {
-  const r = Math.floor(prng.next() * TOTAL_WEIGHT);
-  // binary search cumulative distribution
-  let lo = 0;
-  let hi = CUMULATIVE.length - 1;
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1;
-    if (r < CUMULATIVE[mid].cum) hi = mid;
-    else lo = mid + 1;
-  }
-  return CUMULATIVE[lo].letter;
-}
+const DICE = [
+  "fayirs",
+  "eeeeam",
+  "toootu",
+  "hordnl",
+  "yrrrip",
+  "tettmo",
+  "dnaenn",
+  "hlrndo",
+  "gaemeu",
+  "wonotu",
+  "vgrrow",
+  "pletic",
+  "asrafa",
+  "dnodht",
+  "rfiasa",
+  "drolhh",
+  "tesccn",
+  "jkbxzq",
+  "nagmne",
+  "sesusn",
+  "pfsyri",
+  "itecil",
+  "tetiii",
+  "eeeeaa",
+  "piestc",
+];
 
 function formatDate(date: string | Date): string {
   if (typeof date === "string") return date;
@@ -66,7 +40,20 @@ function formatDate(date: string | Date): string {
 export function generateBoardForDate(date: string | Date, salt: string): Board {
   const dateStr = formatDate(date);
   const prng = createPrng(`${dateStr}|${salt}`);
-  const cells: string[] = Array.from({ length: 25 }, () => pickLetter(prng));
+
+  // Shuffle dice positions
+  const shuffledDice = [...DICE];
+  for (let i = shuffledDice.length - 1; i > 0; i--) {
+    const j = prng.nextInt(i + 1);
+    [shuffledDice[i], shuffledDice[j]] = [shuffledDice[j], shuffledDice[i]];
+  }
+
+  // Pick a face for each die
+  const cells: string[] = shuffledDice.map((die) => {
+    const faceIndex = prng.nextInt(6);
+    return die[faceIndex].toUpperCase();
+  });
+
   const board: Board = [
     [cells[0], cells[1], cells[2], cells[3], cells[4]],
     [cells[5], cells[6], cells[7], cells[8], cells[9]],
