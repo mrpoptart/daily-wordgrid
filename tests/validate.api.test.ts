@@ -3,11 +3,18 @@ import { POST, type ValidateErrorResponse, type ValidateResponse } from "../app/
 
 const originalEnv = process.env;
 
+// Path for "ROAM" on the board generated for 2025-01-02 with salt "unit-test-salt"
+// Board:
+// E A L R O
+// O R M T G
+// N S N A S
+// N Z D A R
+// T I O F P
 const VALID_PATH: [number, number][] = [
-  [1, 1],
-  [2, 1],
-  [1, 2],
-  [0, 3],
+  [1, 1], // R
+  [1, 0], // O
+  [0, 1], // A
+  [1, 2], // M
 ];
 
 const INVALID_PATH: [number, number][] = [
@@ -45,7 +52,7 @@ describe("POST /api/validate", () => {
     expect(json.date).toBe("2025-01-02");
     expect(json.env.hasDailySalt).toBe(true);
     expect(json.result.ok).toBe(true);
-    expect(json.result.word).toBe("AIDS");
+    expect(json.result.word).toBe("ROAM");
     expect(json.letters).toMatch(/^[A-Z]{25}$/);
   });
 
