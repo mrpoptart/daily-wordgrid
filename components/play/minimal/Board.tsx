@@ -119,7 +119,7 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
   return (
     <div
       ref={boardRef}
-      className="grid grid-cols-5 gap-2 touch-none select-none"
+      className="grid grid-cols-5 gap-1 sm:gap-2 touch-none select-none"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
