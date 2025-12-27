@@ -7,6 +7,7 @@ export type InteractionType = 'start' | 'move' | 'end';
 export type FeedbackType = 'success' | 'duplicate' | 'invalid';
 
 export interface FeedbackState {
+  id: string;
   type: FeedbackType;
   message?: string;
   row: number;
@@ -17,10 +18,10 @@ interface BoardProps {
   board: Board;
   highlightedCells?: { row: number; col: number }[];
   onInteraction?: (row: number, col: number, type: InteractionType) => void;
-  feedback?: FeedbackState | null;
+  feedbacks?: FeedbackState[];
 }
 
-export function BoardComponent({ board, highlightedCells = [], onInteraction, feedback }: BoardProps) {
+export function BoardComponent({ board, highlightedCells = [], onInteraction, feedbacks = [] }: BoardProps) {
   const boardRef = useRef<HTMLDivElement>(null);
   // specific state to track if we are currently in a drag operation (mouse or touch)
   // to avoid triggering move events when just hovering with mouse
@@ -130,7 +131,7 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
       {board.map((row, rowIndex) =>
         row.map((letter, colIndex) => {
           const highlighted = isHighlighted(rowIndex, colIndex);
-          const isFeedbackCell = feedback?.row === rowIndex && feedback?.col === colIndex;
+          const cellFeedbacks = feedbacks.filter(f => f.row === rowIndex && f.col === colIndex);
 
           return (
             <div
@@ -147,8 +148,8 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
               )}
             >
               {letter}
-              {isFeedbackCell && (
-                <div className="absolute top-1/2 left-1/2 z-50 pointer-events-none animate-float-up">
+              {cellFeedbacks.map((feedback) => (
+                <div key={feedback.id} className="absolute top-1/2 left-1/2 z-50 pointer-events-none animate-float-up">
                     {/* Content based on feedback.type */}
                     {feedback.type === 'success' && (
                        <div className="bg-emerald-500 text-white font-bold px-3 py-1 rounded-full shadow-lg shadow-black/20 text-sm flex items-center whitespace-nowrap border border-white/20">
@@ -171,7 +172,7 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
                         </div>
                     )}
                 </div>
-              )}
+              ))}
             </div>
           );
         })

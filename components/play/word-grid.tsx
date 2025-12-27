@@ -32,9 +32,10 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
-  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const [feedbacks, setFeedbacks] = useState<FeedbackState[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const feedbackTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Load initial state
   useEffect(() => {
@@ -78,15 +79,13 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     });
   }, [boardDate]);
 
-  // Clear feedback after delay
+  // Cleanup function for feedback timeouts on unmount
   useEffect(() => {
-    if (feedback) {
-      const timer = setTimeout(() => {
-        setFeedback(null);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [feedback]);
+    return () => {
+      feedbackTimeouts.current.forEach(timeout => clearTimeout(timeout));
+      feedbackTimeouts.current.clear();
+    };
+  }, []);
 
   // Categorize words
   const { wordsWithinTime, wordsAfterTime, scoreWithinTime, scoreAfterTime } = useMemo(() => {
@@ -243,7 +242,24 @@ ${breakdown}`;
     const lastCell = pathForFeedback ? pathForFeedback[pathForFeedback.length - 1] : null;
     const showFeedback = (type: FeedbackType, message?: string) => {
         if (lastCell) {
-            setFeedback({ type, message, row: lastCell.row, col: lastCell.col });
+            const id = `${Date.now()}-${Math.random()}`;
+            const newFeedback: FeedbackState = {
+              id,
+              type,
+              message,
+              row: lastCell.row,
+              col: lastCell.col
+            };
+
+            setFeedbacks(prev => [...prev, newFeedback]);
+
+            // Set timeout to remove this specific feedback after 1500ms
+            const timeout = setTimeout(() => {
+                setFeedbacks(prev => prev.filter(f => f.id !== id));
+                feedbackTimeouts.current.delete(id);
+            }, 1500);
+
+            feedbackTimeouts.current.set(id, timeout);
         }
     };
 
@@ -395,7 +411,7 @@ ${breakdown}`;
             board={board}
             highlightedCells={highlightedCells}
             onInteraction={handleInteraction}
-            feedback={feedback}
+            feedbacks={feedbacks}
           />
         </div>
       </div>
