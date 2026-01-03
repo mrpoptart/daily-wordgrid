@@ -51,7 +51,9 @@ export function generateBoardForDate(date: string | Date, salt: string): Board {
   // Pick a face for each die
   const cells: string[] = shuffledDice.map((die) => {
     const faceIndex = prng.nextInt(6);
-    return die[faceIndex].toUpperCase();
+    const letter = die[faceIndex].toUpperCase();
+    // Convert Q to QU to make it always useful in English
+    return letter === "Q" ? "QU" : letter;
   });
 
   const board: Board = [

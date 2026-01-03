@@ -44,14 +44,20 @@ export function findPathForWord(board: Board, rawWord: string): Coord[] | null {
     path: Coord[],
     visited: Set<string>,
   ): Coord[] | null {
-    if (board[row][col] !== target[index]) return null;
+    const cellValue = board[row][col];
+    const cellLength = cellValue.length;
+
+    // Check if the cell value matches the target substring starting at index
+    const targetSubstring = target.substring(index, index + cellLength);
+    if (cellValue !== targetSubstring) return null;
 
     const coord: Coord = [row, col];
     const key = `${row},${col}`;
     if (visited.has(key)) return null;
 
     const nextPath = [...path, coord];
-    if (index === target.length - 1) return nextPath;
+    const nextIndex = index + cellLength;
+    if (nextIndex === target.length) return nextPath;
 
     visited.add(key);
 
@@ -61,9 +67,13 @@ export function findPathForWord(board: Board, rawWord: string): Coord[] | null {
 
       if (!isInBounds(board, nextRow, nextCol)) continue;
       if (visited.has(`${nextRow},${nextCol}`)) continue;
-      if (board[nextRow][nextCol] !== target[index + 1]) continue;
 
-      const result = dfs(nextRow, nextCol, index + 1, nextPath, visited);
+      const nextCellValue = board[nextRow][nextCol];
+      const nextCellLength = nextCellValue.length;
+      const nextTargetSubstring = target.substring(nextIndex, nextIndex + nextCellLength);
+      if (nextCellValue !== nextTargetSubstring) continue;
+
+      const result = dfs(nextRow, nextCol, nextIndex, nextPath, visited);
       if (result) return result;
     }
 
@@ -73,7 +83,10 @@ export function findPathForWord(board: Board, rawWord: string): Coord[] | null {
 
   for (let row = 0; row < board.length; row++) {
     for (let col = 0; col < board[row].length; col++) {
-      if (board[row][col] !== target[0]) continue;
+      const cellValue = board[row][col];
+      const cellLength = cellValue.length;
+      const targetStart = target.substring(0, cellLength);
+      if (cellValue !== targetStart) continue;
       const result = dfs(row, col, 0, [], new Set());
       if (result) return result;
     }
