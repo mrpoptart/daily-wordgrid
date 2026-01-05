@@ -132,6 +132,8 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
         row.map((letter, colIndex) => {
           const highlighted = isHighlighted(rowIndex, colIndex);
           const cellFeedbacks = feedbacks.filter(f => f.row === rowIndex && f.col === colIndex);
+          // Use smaller font size for multi-character tiles like "Qu"
+          const isMultiChar = letter.length > 1;
 
           return (
             <div
@@ -140,7 +142,8 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
               data-row={rowIndex}
               data-col={colIndex}
               className={cn(
-                "relative flex aspect-square items-center justify-center text-2xl sm:text-3xl font-bold uppercase transition-colors duration-150 rounded-full border",
+                "relative flex aspect-square items-center justify-center font-bold uppercase transition-colors duration-150 rounded-full border",
+                isMultiChar ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl",
                 highlighted
                   ? "bg-emerald-500 text-white border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                   : "bg-slate-900 text-slate-100 border-white/10 hover:border-emerald-500/50",
