@@ -1,7 +1,8 @@
 import { AuthRedirect } from "@/components/auth/auth-redirect";
 import { UserLastLoginUpdater } from "@/components/auth/user-last-login-updater";
 import { LoginCard } from "@/components/auth/login-card";
-import { BoardPreview } from "@/components/landing/board-preview";
+import { BoardComponent } from "@/components/play/minimal/Board";
+import { Board } from "@/lib/board/types";
 
 const FLOW = [
   {
@@ -25,6 +26,22 @@ const SCORING = [
   { label: "7 letters", points: 5 },
   { label: "8+ letters", points: 11 },
 ] as const;
+
+const SAMPLE_BOARD: Board = [
+  ["S", "O", "L", "V", "E"],
+  ["R", "A", "T", "E", "S"],
+  ["D", "A", "I", "L", "Y"],
+  ["W", "O", "R", "D", "L"],
+  ["G", "R", "I", "D", "S"],
+];
+
+const SAMPLE_HIGHLIGHT = [
+  { row: 0, col: 0 },
+  { row: 0, col: 1 },
+  { row: 0, col: 2 },
+  { row: 0, col: 3 },
+  { row: 0, col: 4 },
+];
 
 export default async function Home() {
   return (
@@ -54,10 +71,20 @@ export default async function Home() {
                 <p className="text-2xl font-semibold text-white">Connect letters to form words</p>
               </div>
             </div>
-            <BoardPreview
-              caption="Sample board"
-              className="mx-auto"
-            />
+            <div className="space-y-4">
+              <div className="mx-auto max-w-sm">
+                <BoardComponent
+                  board={SAMPLE_BOARD}
+                  highlightedCells={SAMPLE_HIGHLIGHT}
+                />
+              </div>
+              <div className="text-center text-sm text-slate-300">
+                <p>Sample board</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
+                  Highlighted path forms SOLVE
+                </p>
+              </div>
+            </div>
             <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
               <span className="rounded-full border border-white/15 px-3 py-1">4+ letters</span>
               <span className="rounded-full border border-white/15 px-3 py-1">No reusing tiles</span>
