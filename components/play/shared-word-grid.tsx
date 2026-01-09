@@ -14,6 +14,7 @@ import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
 import { flattenBoard } from "@/lib/board/api-helpers";
 
 import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
+import { WordList } from "./minimal/WordList";
 
 export type SharedWordGridProps = {
   board: Board;
@@ -34,6 +35,11 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
 
   const totalScore = useMemo(() => {
     return words.reduce((sum, w) => sum + w.score, 0);
+  }, [words]);
+
+  // Sort words alphabetically
+  const sortedWords = useMemo(() => {
+    return [...words].sort((a, b) => a.word.localeCompare(b.word));
   }, [words]);
 
   // Calculate highlighted cells based on input or drag
@@ -213,6 +219,22 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
 
   const handleShare = async () => {
     const url = window.location.href;
+    const shareData = {
+      title: 'Shared Word Grid',
+      text: 'Play this word grid with me!',
+      url: url,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    }
+
+    // Fallback to clipboard
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard!");
@@ -298,23 +320,11 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
         {/* Words List */}
         <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
           <h2 className="text-lg font-semibold mb-3">Found Words ({words.length})</h2>
-          {words.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-4">
-              No words found yet. Start typing or drag on the board!
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {words.map((w, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between bg-slate-700/50 px-3 py-2 rounded"
-                >
-                  <span className="font-medium">{w.word}</span>
-                  <span className="text-emerald-400 text-sm">+{w.score}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <WordList
+            words={sortedWords}
+            emptyMessage="No words found yet. Start typing or drag on the board!"
+            className="flex flex-col"
+          />
         </div>
       </div>
     </div>
