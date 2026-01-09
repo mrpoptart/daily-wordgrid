@@ -76,6 +76,40 @@ export function flattenBoard(board: Board): string {
   return out;
 }
 
+export function boardToUrlId(board: Board): string {
+  const cells: string[] = [];
+  for (let r = 0; r < board.length; r++) {
+    for (let c = 0; c < board[r].length; c++) {
+      cells.push(board[r][c]);
+    }
+  }
+  return cells.join("-");
+}
+
+export function urlIdToBoard(id: string): Board | null {
+  try {
+    const cells = id.split("-");
+    if (cells.length !== 25) return null;
+
+    // Validate each cell is uppercase letters
+    for (const cell of cells) {
+      if (!/^[A-Z]+$/.test(cell)) return null;
+    }
+
+    const board: Board = [
+      [cells[0], cells[1], cells[2], cells[3], cells[4]],
+      [cells[5], cells[6], cells[7], cells[8], cells[9]],
+      [cells[10], cells[11], cells[12], cells[13], cells[14]],
+      [cells[15], cells[16], cells[17], cells[18], cells[19]],
+      [cells[20], cells[21], cells[22], cells[23], cells[24]],
+    ];
+
+    return board;
+  } catch {
+    return null;
+  }
+}
+
 export function resolveDailySalt(): { salt: string; hasDailySalt: boolean } {
   const raw = typeof process?.env?.BOARD_DAILY_SALT === "string" ? process.env.BOARD_DAILY_SALT : null;
   const trimmed = raw ? raw.trim() : "";
