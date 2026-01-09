@@ -11,6 +11,7 @@ import {
 } from "@/lib/validation/words";
 import { scoreWordLength } from "@/lib/scoring";
 import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
+import { flattenBoard } from "@/lib/board/api-helpers";
 
 import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
 
@@ -21,6 +22,9 @@ export type SharedWordGridProps = {
 type AddedWord = { word: string; score: number };
 
 export function SharedWordGrid({ board }: SharedWordGridProps) {
+  // Generate a unique key for this board
+  const boardKey = useMemo(() => `shared-words-${flattenBoard(board)}`, [board]);
+
   const [words, setWords] = useState<AddedWord[]>([]);
   const [input, setInput] = useState("");
   const [dragPath, setDragPath] = useState<{ row: number; col: number }[] | null>(null);
@@ -50,6 +54,28 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
       feedbackTimeouts.current.clear();
     };
   }, []);
+
+  // Load words from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(boardKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as AddedWord[];
+        setWords(parsed);
+      }
+    } catch (err) {
+      console.error("Failed to load words from localStorage:", err);
+    }
+  }, [boardKey]);
+
+  // Save words to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(boardKey, JSON.stringify(words));
+    } catch (err) {
+      console.error("Failed to save words to localStorage:", err);
+    }
+  }, [words, boardKey]);
 
   const handleSubmit = useCallback(() => {
     if (!input.trim()) return;
@@ -103,7 +129,11 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
       score,
     };
 
-    setWords(prev => [...prev, newWord]);
+    setWords(prev => {
+      const updated = [...prev, newWord];
+      console.log("Adding word:", actualWord, "New total:", updated.length, "words");
+      return updated;
+    });
 
     // Show success feedback on last cell
     if (path.length > 0) {
@@ -231,9 +261,13 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
         </div>
 
         {/* Words List */}
-        {words.length > 0 && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
-            <h2 className="text-lg font-semibold mb-3">Found Words</h2>
+        <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
+          <h2 className="text-lg font-semibold mb-3">Found Words ({words.length})</h2>
+          {words.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-4">
+              No words found yet. Start typing or drag on the board!
+            </p>
+          ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {words.map((w, i) => (
                 <div
@@ -245,8 +279,8 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
