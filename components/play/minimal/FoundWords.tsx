@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { WordList } from "./WordList";
 
 interface FoundWordsProps {
   wordsWithinTime: { word: string; score: number }[];
@@ -24,12 +25,7 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime }: FoundWordsProps)
             <p className="text-sm italic text-slate-500">No words found yet</p>
           ) : (
             <>
-              {wordsWithinTime.map((w, i) => (
-                <div key={`within-${i}`} className="flex justify-between py-1 text-sm text-slate-100">
-                  <span>{w.word}</span>
-                  <span className="text-slate-500">({w.score} pts)</span>
-                </div>
-              ))}
+              <WordList words={wordsWithinTime} emptyMessage="" />
 
               {wordsAfterTime.length > 0 && (
                 <>
