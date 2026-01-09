@@ -1,5 +1,7 @@
 "use client";
 
+import { WordDefinitionPopup } from "../WordDefinitionPopup";
+
 interface WordListProps {
   words: { word: string; score: number }[];
   emptyMessage?: string;
@@ -15,7 +17,11 @@ export function WordList({ words, emptyMessage = "No words found yet", className
         <>
           {words.map((w, i) => (
             <div key={`word-${i}`} className="flex justify-between py-1 text-sm text-slate-100">
-              <span>{w.word}</span>
+              <WordDefinitionPopup word={w.word}>
+                <button className="hover:text-emerald-300 transition-colors cursor-pointer text-left">
+                  {w.word}
+                </button>
+              </WordDefinitionPopup>
               <span className="text-slate-500">({w.score} pts)</span>
             </div>
           ))}

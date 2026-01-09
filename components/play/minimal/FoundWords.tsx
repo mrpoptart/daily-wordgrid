@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { WordList } from "./WordList";
+import { WordDefinitionPopup } from "../WordDefinitionPopup";
 
 interface FoundWordsProps {
   wordsWithinTime: { word: string; score: number }[];
@@ -35,7 +36,11 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime }: FoundWordsProps)
                   </div>
                   {wordsAfterTime.map((w, i) => (
                     <div key={`after-${i}`} className="flex justify-between py-1 text-sm text-slate-500">
-                      <span>{w.word}</span>
+                      <WordDefinitionPopup word={w.word}>
+                        <button className="hover:text-slate-400 transition-colors cursor-pointer text-left">
+                          {w.word}
+                        </button>
+                      </WordDefinitionPopup>
                       <span>({w.score} pts)</span>
                     </div>
                   ))}
