@@ -37,6 +37,11 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
     return words.reduce((sum, w) => sum + w.score, 0);
   }, [words]);
 
+  // Sort words alphabetically
+  const sortedWords = useMemo(() => {
+    return [...words].sort((a, b) => a.word.localeCompare(b.word));
+  }, [words]);
+
   // Calculate highlighted cells based on input or drag
   const highlightedCells = useMemo(() => {
     if (dragPath) return dragPath;
@@ -300,7 +305,7 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
         <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
           <h2 className="text-lg font-semibold mb-3">Found Words ({words.length})</h2>
           <WordList
-            words={words}
+            words={sortedWords}
             emptyMessage="No words found yet. Start typing or drag on the board!"
             className="flex flex-col"
           />
