@@ -219,6 +219,22 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
 
   const handleShare = async () => {
     const url = window.location.href;
+    const shareData = {
+      title: 'Shared Word Grid',
+      text: 'Play this word grid with me!',
+      url: url,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    }
+
+    // Fallback to clipboard
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard!");
