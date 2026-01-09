@@ -36,6 +36,20 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
     return words.reduce((sum, w) => sum + w.score, 0);
   }, [words]);
 
+  // Calculate highlighted cells based on input or drag
+  const highlightedCells = useMemo(() => {
+    if (dragPath) return dragPath;
+
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+
+    const path = findPathForWord(board, trimmed);
+    if (path) {
+      return path.map(([row, col]) => ({ row, col }));
+    }
+    return [];
+  }, [input, board, dragPath]);
+
   const addFeedback = useCallback((row: number, col: number, type: FeedbackType, message?: string) => {
     const id = `${row}-${col}-${Date.now()}`;
     setFeedbacks(prev => [...prev, { id, row, col, type, message }]);
@@ -145,32 +159,53 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
     setInput("");
   }, [input, board, words, addFeedback]);
 
-  const handleDragInteraction = useCallback((row: number, col: number, type: InteractionType) => {
+  const handleInteraction = useCallback((row: number, col: number, type: InteractionType) => {
     if (type === 'start') {
+      const letter = board[row][col];
       setDragPath([{ row, col }]);
+      setInput(letter);
     } else if (type === 'move') {
-      setDragPath(prev => {
-        if (!prev || prev.length === 0) return [{ row, col }];
+      if (!dragPath) return;
 
-        const last = prev[prev.length - 1];
-        if (last.row === row && last.col === col) return prev;
+      const lastCell = dragPath[dragPath.length - 1];
 
-        const exists = prev.some(p => p.row === row && p.col === col);
-        if (exists) return prev;
+      // Ignore same cell
+      if (lastCell.row === row && lastCell.col === col) return;
 
-        const rowDiff = Math.abs(row - last.row);
-        const colDiff = Math.abs(col - last.col);
-        const isAdjacent = rowDiff <= 1 && colDiff <= 1 && (rowDiff + colDiff) > 0;
+      // Check for backtrack
+      if (dragPath.length > 1) {
+        const prevCell = dragPath[dragPath.length - 2];
+        if (prevCell.row === row && prevCell.col === col) {
+          const newPath = dragPath.slice(0, -1);
+          setDragPath(newPath);
+          // Also update input to remove last letter
+          setInput(prev => {
+            const lastLetter = board[lastCell.row][lastCell.col];
+            return prev.slice(0, -lastLetter.length);
+          });
+          return;
+        }
+      }
 
-        if (!isAdjacent) return prev;
+      // Check adjacency
+      const rowDiff = Math.abs(lastCell.row - row);
+      const colDiff = Math.abs(lastCell.col - col);
+      const isAdjacent = rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
 
-        return [...prev, { row, col }];
-      });
+      if (!isAdjacent) return;
+
+      // Check if visited
+      const isVisited = dragPath.some(c => c.row === row && c.col === col);
+      if (isVisited) return;
+
+      const letter = board[row][col];
+      setDragPath([...dragPath, { row, col }]);
+      setInput(prev => prev + letter);
+
     } else if (type === 'end') {
-      if (dragPath && dragPath.length >= MIN_PATH_LENGTH) {
-        const word = dragPath.map(p => board[p.row][p.col]).join("");
-        setInput(word);
-        setTimeout(() => handleSubmit(), 50);
+      if (dragPath && dragPath.length > 0) {
+        // Submit with the drag path for feedback
+        handleSubmit();
       }
       setDragPath(null);
     }
@@ -229,8 +264,8 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
           <div className="w-full max-w-md">
             <BoardComponent
               board={board}
-              highlightedCells={dragPath || []}
-              onInteraction={handleDragInteraction}
+              highlightedCells={highlightedCells}
+              onInteraction={handleInteraction}
               feedbacks={feedbacks}
             />
           </div>
