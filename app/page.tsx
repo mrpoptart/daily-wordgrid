@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AuthRedirect } from "@/components/auth/auth-redirect";
 import { UserLastLoginUpdater } from "@/components/auth/user-last-login-updater";
 import { LoginCard } from "@/components/auth/login-card";
@@ -41,8 +42,14 @@ export default async function Home() {
               Find as many words as you can in 3 minutes. Everyone plays the same board. One chance per day.
             </p>
           </div>
-          <div className="w-full max-w-md mx-auto lg:mx-0">
+          <div className="w-full max-w-md mx-auto lg:mx-0 space-y-3">
             <LoginCard redirectPath="/play" title="Play now" />
+            <Link
+              href="/share"
+              className="block w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-center font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 hover:border-emerald-500/50"
+            >
+              Play Shared Board (No Login Required)
+            </Link>
           </div>
         </header>
 
