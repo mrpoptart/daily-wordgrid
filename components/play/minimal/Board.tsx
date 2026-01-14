@@ -179,12 +179,12 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
           height={svgDimensions.height}
           style={{ overflow: 'visible' }}
         >
-          {/* Main connection line - 40px width for 93px letter boxes */}
+          {/* Main connection line */}
           <polyline
             points={polylinePoints}
             fill="none"
             stroke="rgb(16, 185, 129)"
-            strokeWidth="40"
+            strokeWidth="30"
             strokeLinecap="round"
             strokeLinejoin="round"
             className="drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]"
