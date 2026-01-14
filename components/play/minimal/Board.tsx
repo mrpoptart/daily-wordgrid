@@ -171,20 +171,20 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
 
   return (
     <div className="relative">
-      {/* SVG Connection Lines Overlay */}
+      {/* SVG Connection Lines Overlay - behind the letter boxes */}
       {connectionPoints.length >= 2 && (
         <svg
-          className="absolute inset-0 z-10 pointer-events-none"
+          className="absolute inset-0 z-0 pointer-events-none"
           width={svgDimensions.width}
           height={svgDimensions.height}
           style={{ overflow: 'visible' }}
         >
-          {/* Main connection line */}
+          {/* Main connection line - stroke is 40% of circle radius (8 * 0.4 = 3.2) */}
           <polyline
             points={polylinePoints}
             fill="none"
             stroke="rgb(16, 185, 129)"
-            strokeWidth="6"
+            strokeWidth="3.2"
             strokeLinecap="round"
             strokeLinejoin="round"
             className="drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]"
