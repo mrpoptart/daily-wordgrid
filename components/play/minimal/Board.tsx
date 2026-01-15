@@ -215,7 +215,7 @@ export function BoardComponent({ board, highlightedCells = [], onInteraction, fe
                 data-row={rowIndex}
                 data-col={colIndex}
                 className={cn(
-                  "relative flex aspect-square items-center justify-center font-bold uppercase transition-colors duration-150 rounded-full border",
+                  "relative flex aspect-square items-center justify-center font-bold uppercase rounded-full border",
                   isMultiChar ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl",
                   highlighted
                     ? "bg-emerald-500 text-white border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
