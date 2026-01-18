@@ -100,3 +100,44 @@ describe("findPathForWord", () => {
     expect(result).toBeNull();
   });
 });
+
+// Board with QU tile for testing QU letter counting
+const BOARD_WITH_QU: Board = [
+  ["QU", "I", "T", "S", "A"],
+  ["A", "L", "L", "E", "D"],
+  ["B", "C", "D", "F", "G"],
+  ["H", "J", "K", "M", "N"],
+  ["O", "P", "R", "S", "V"],
+];
+
+describe("QU tile letter counting", () => {
+  it("assembles QU tile as two letters", () => {
+    // Path: QU -> I -> T = "QUIT" (4 letters from 3 tiles)
+    const path: [number, number][] = [[0, 0], [0, 1], [0, 2]];
+    const word = assembleWord(BOARD_WITH_QU, path);
+    expect(word).toBe("QUIT");
+    expect(word.length).toBe(4);
+  });
+
+  it("validates 4-letter word from 3 tiles with QU", () => {
+    // QUIT is a valid word
+    const path: [number, number][] = [[0, 0], [0, 1], [0, 2]];
+    const res = validateWord(BOARD_WITH_QU, path);
+    expect(res.ok).toBe(true);
+    expect(res.word).toBe("QUIT");
+  });
+
+  it("finds path for word starting with QU", () => {
+    const result = findPathForWord(BOARD_WITH_QU, "QUIT");
+    expect(result).not.toBeNull();
+    expect(result).toHaveLength(3); // 3 tiles for 4-letter word
+  });
+
+  it("rejects 2-tile path as invalid (minimum 3 tiles needed)", () => {
+    // QU -> I = "QUI" (3 letters from 2 tiles) - path too short
+    const path: [number, number][] = [[0, 0], [0, 1]];
+    const res = validateWord(BOARD_WITH_QU, path);
+    expect(res.ok).toBe(false);
+    expect(res.reason).toBe("invalid-path"); // Rejected for insufficient tiles
+  });
+});

@@ -14,9 +14,13 @@ function isWithinBoard(board: Board, coord: Coord): boolean {
   return row >= 0 && row < size && col >= 0 && col < size;
 }
 
+// Minimum tiles needed to potentially form a valid word
+// With QU tiles counting as 2 letters, 3 tiles can make a 4-letter word
+const MIN_TILES_FOR_VALID_WORD = MIN_PATH_LENGTH - 1;
+
 /**
  * Validates a path of coordinates over a square board under Boggle-like rules:
- * - Path length must be at least MIN_PATH_LENGTH
+ * - Path must have enough tiles to potentially form a valid word
  * - All coordinates must be within board bounds
  * - No cell may be revisited (no reuse)
  * - Consecutive coordinates must be 8-way adjacent
@@ -24,7 +28,7 @@ function isWithinBoard(board: Board, coord: Coord): boolean {
  */
 export function isValidPath(board: Board, path: Coord[]): boolean {
   if (!Array.isArray(path)) return false;
-  if (path.length < MIN_PATH_LENGTH) return false;
+  if (path.length < MIN_TILES_FOR_VALID_WORD) return false;
 
   const visited = new Set<string>();
   let previous: Coord | null = null;
