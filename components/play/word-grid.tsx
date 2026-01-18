@@ -371,8 +371,11 @@ ${breakdown}`;
             if (prevCell.row === row && prevCell.col === col) {
                 const newPath = dragPath.slice(0, -1);
                 setDragPath(newPath);
-                // Also update input to remove last char
-                setInput(prev => prev.slice(0, -1));
+                // Also update input to remove last letter (handles QU as 2 chars)
+                setInput(prev => {
+                    const lastLetter = board[lastCell.row][lastCell.col];
+                    return prev.slice(0, -lastLetter.length);
+                });
                 return;
             }
         }

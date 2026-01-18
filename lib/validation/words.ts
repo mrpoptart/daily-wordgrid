@@ -96,7 +96,7 @@ export function findPathForWord(board: Board, rawWord: string): Coord[] | null {
 }
 
 export function validateWord(board: Board, path: Coord[]): WordCheck {
-  if (!Array.isArray(path) || path.length < MIN_PATH_LENGTH) {
+  if (!Array.isArray(path) || path.length === 0) {
     return { ok: false, reason: "too-short" };
   }
 
@@ -105,6 +105,13 @@ export function validateWord(board: Board, path: Coord[]): WordCheck {
   }
 
   const word = assembleWord(board, path);
+
+  // Check word character length, not path length
+  // This ensures QU tiles count as 2 letters
+  if (word.length < MIN_PATH_LENGTH) {
+    return { ok: false, reason: "too-short" };
+  }
+
   if (!isSowpodsWord(word)) {
     return { ok: false, reason: "not-in-dictionary", word };
   }

@@ -7,8 +7,14 @@ const BOARD = generateBoardForDate("2025-01-02", "validation-salt");
 
 describe("isValidPath", () => {
   it("rejects paths shorter than minimum length", () => {
-    const path: Coord[] = [[0, 0], [0, 1], [0, 2]]; // length 3
+    // Minimum path is 3 tiles (can form 4-letter word with QU)
+    const path: Coord[] = [[0, 0], [0, 1]]; // length 2
     expect(isValidPath(BOARD, path)).toBe(false);
+  });
+
+  it("accepts 3-tile paths (can form 4-letter words with QU)", () => {
+    const path: Coord[] = [[0, 0], [0, 1], [0, 2]]; // length 3
+    expect(isValidPath(BOARD, path)).toBe(true);
   });
 
   it("rejects out-of-bounds coordinates", () => {
