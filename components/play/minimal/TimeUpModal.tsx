@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 interface TimeUpModalProps {
   score: number;
@@ -28,6 +29,12 @@ export function TimeUpModal({ score, wordsFound, onShare, onKeepPlaying, isOpen 
           <Button type="button" onClick={onKeepPlaying} className="w-full bg-slate-800 text-white hover:bg-slate-700">
             Keep Playing
           </Button>
+          <Link
+            href="/share"
+            className="inline-flex h-10 w-full items-center justify-center rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          >
+            Start a Shareable Game
+          </Link>
         </div>
       </div>
     </div>
