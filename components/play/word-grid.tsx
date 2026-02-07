@@ -34,6 +34,9 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [feedbacks, setFeedbacks] = useState<FeedbackState[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [totalPausedMs, setTotalPausedMs] = useState(0);
+  const pauseStartedAtRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const feedbackTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
@@ -141,6 +144,8 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
   const handleTimeUp = useCallback(() => {
     setIsTimeUp(true);
+    setIsPaused(false);
+    pauseStartedAtRef.current = null;
     if (typeof window !== 'undefined') {
       const key = `wordgrid-time-up-seen-${boardDate}`;
       if (!localStorage.getItem(key)) {
@@ -148,6 +153,22 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       }
     }
   }, [boardDate]);
+
+  const handlePauseToggle = useCallback(() => {
+    if (isPaused) {
+      // Resume: accumulate the pause duration
+      if (pauseStartedAtRef.current !== null) {
+        setTotalPausedMs(prev => prev + (Date.now() - pauseStartedAtRef.current!));
+        pauseStartedAtRef.current = null;
+      }
+      setIsPaused(false);
+      inputRef.current?.focus();
+    } else {
+      // Pause: record when pause started
+      pauseStartedAtRef.current = Date.now();
+      setIsPaused(true);
+    }
+  }, [isPaused]);
 
   async function handleShare() {
     // Generate breakdown by length
@@ -410,12 +431,26 @@ ${breakdown}`;
       {/* Board Column */}
       <div className="flex justify-center lg:justify-start">
         <div className="w-full sm:max-w-[360px] md:max-w-[420px] lg:max-w-[500px]">
-          <BoardComponent
-            board={board}
-            highlightedCells={highlightedCells}
-            onInteraction={handleInteraction}
-            feedbacks={feedbacks}
-          />
+          {isPaused ? (
+            <div className="flex aspect-square items-center justify-center rounded-lg border border-white/10 bg-slate-900/80">
+              <button
+                onClick={handlePauseToggle}
+                className="flex flex-col items-center gap-3 text-slate-300 hover:text-emerald-300 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                  <polygon points="6 3 20 12 6 21 6 3" />
+                </svg>
+                <span className="text-lg font-semibold">Resume</span>
+              </button>
+            </div>
+          ) : (
+            <BoardComponent
+              board={board}
+              highlightedCells={highlightedCells}
+              onInteraction={handleInteraction}
+              feedbacks={feedbacks}
+            />
+          )}
         </div>
       </div>
 
@@ -435,6 +470,9 @@ ${breakdown}`;
           onShare={handleShare}
           userEmail={userEmail}
           onLogout={handleLogout}
+          isPaused={isPaused}
+          totalPausedMs={totalPausedMs}
+          onPause={handlePauseToggle}
         />
       </div>
 
