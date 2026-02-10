@@ -29,7 +29,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const [words, setWords] = useState<AddedWord[]>([]);
   const [input, setInput] = useState("");
   const [dragPath, setDragPath] = useState<{ row: number; col: number }[] | null>(null);
-  const [isTimeUp, setIsTimeUp] = useState(false);
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [feedbacks, setFeedbacks] = useState<FeedbackState[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -109,7 +108,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
               if (elapsed >= TIME_LIMIT_SECONDS) {
                 setTimeRemaining(0);
-                setIsTimeUp(true);
                 setIsPaused(false);
               } else {
                 // Always load as paused — user clicks Resume to continue
@@ -159,8 +157,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       if (remaining <= 0) {
         elapsedBaseRef.current = TIME_LIMIT_SECONDS;
         syncElapsedToDb(TIME_LIMIT_SECONDS);
-        setIsTimeUp(true);
-
         if (typeof window !== 'undefined') {
           const key = `wordgrid-time-up-seen-${boardDate}`;
           if (!localStorage.getItem(key)) {
@@ -172,8 +168,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  // elapsedBaseRef intentionally excluded — we read the ref, not the state
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameStarted, isPaused, boardDate, syncElapsedToDb]);
 
   // Categorize words using elapsed_at (play-time based, not wall-clock)
