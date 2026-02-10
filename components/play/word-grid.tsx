@@ -41,7 +41,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   // Refs for timer logic (avoid stale closures in interval)
   const elapsedBaseRef = useRef(0);       // accumulated elapsed seconds from DB / previous play sessions
   const playResumedAtRef = useRef<number | null>(null); // Date.now() when current play session started
-  const syncCounterRef = useRef(0);
   const userIdRef = useRef<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,11 +58,14 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   // Helper: sync elapsed seconds to database
   const syncElapsedToDb = useCallback(async (seconds: number) => {
     if (!userIdRef.current) return;
-    await supabase
+    const { error } = await supabase
       .from("daily_boards")
       .update({ elapsed_seconds: seconds })
       .eq("user_id", userIdRef.current)
       .eq("board_date", boardDate);
+    if (error) {
+      console.error("Failed to sync elapsed time:", error);
+    }
   }, [boardDate]);
 
   // Load initial state
@@ -136,7 +138,6 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     }
 
     playResumedAtRef.current = Date.now();
-    syncCounterRef.current = 0;
 
     // Immediate display update
     setTimeRemaining(Math.max(0, TIME_LIMIT_SECONDS - Math.floor(elapsedBaseRef.current)));
@@ -147,12 +148,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       const remaining = Math.max(0, TIME_LIMIT_SECONDS - Math.floor(currentElapsed));
 
       setTimeRemaining(remaining);
-
-      // Sync to DB every 5 ticks
-      syncCounterRef.current++;
-      if (syncCounterRef.current % 5 === 0) {
-        syncElapsedToDb(Math.floor(currentElapsed));
-      }
+      syncElapsedToDb(Math.floor(currentElapsed));
 
       if (remaining <= 0) {
         elapsedBaseRef.current = TIME_LIMIT_SECONDS;
@@ -169,6 +165,19 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
 
     return () => clearInterval(interval);
   }, [gameStarted, isPaused, boardDate, syncElapsedToDb]);
+
+  // Sync elapsed time when page is being hidden (tab switch, close, refresh)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && playResumedAtRef.current !== null) {
+        const deltaS = (Date.now() - playResumedAtRef.current) / 1000;
+        const currentElapsed = Math.min(TIME_LIMIT_SECONDS, elapsedBaseRef.current + deltaS);
+        syncElapsedToDb(Math.floor(currentElapsed));
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [syncElapsedToDb]);
 
   // Categorize words using elapsed_at (play-time based, not wall-clock)
   const { wordsWithinTime, wordsAfterTime, scoreWithinTime, scoreAfterTime } = useMemo(() => {
