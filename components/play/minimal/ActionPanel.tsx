@@ -11,8 +11,8 @@ interface ActionPanelProps {
   onSubmit: (e: React.FormEvent) => void;
   scoreWithinTime: number;
   scoreAfterTime: number;
-  boardStartedAt: string | null;
-  onTimeUp: () => void;
+  timeRemaining: number;
+  gameStarted: boolean;
   wordsWithinTime: { word: string; score: number }[];
   wordsAfterTime: { word: string; score: number }[];
   inputRef?: React.RefObject<HTMLInputElement | null>;
@@ -20,7 +20,6 @@ interface ActionPanelProps {
   userEmail: string | null;
   onLogout: () => void;
   isPaused?: boolean;
-  totalPausedMs?: number;
   onPause?: () => void;
 }
 
@@ -30,8 +29,8 @@ export function ActionPanel({
   onSubmit,
   scoreWithinTime,
   scoreAfterTime,
-  boardStartedAt,
-  onTimeUp,
+  timeRemaining,
+  gameStarted,
   wordsWithinTime,
   wordsAfterTime,
   inputRef,
@@ -39,9 +38,10 @@ export function ActionPanel({
   userEmail,
   onLogout,
   isPaused = false,
-  totalPausedMs = 0,
   onPause
 }: ActionPanelProps) {
+  const inputDisabled = isPaused || !gameStarted;
+
   return (
     <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 md:p-0">
       <div className="flex flex-col gap-2">
@@ -55,12 +55,12 @@ export function ActionPanel({
             className="border-white/10 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
             autoComplete="off"
             autoFocus
-            disabled={isPaused}
+            disabled={inputDisabled}
           />
           <Button
             type="submit"
             className="bg-emerald-500 text-white hover:bg-emerald-600"
-            disabled={isPaused}
+            disabled={inputDisabled}
           >
             Submit
           </Button>
@@ -76,8 +76,8 @@ export function ActionPanel({
         </div>
         <div className="flex flex-1 justify-center items-center gap-2 text-sm text-slate-100">
           <span className="font-semibold text-emerald-300">Time:</span>{" "}
-          <Timer boardStartedAt={boardStartedAt} onTimeUp={onTimeUp} isPaused={isPaused} totalPausedMs={totalPausedMs} />
-          {onPause && boardStartedAt && (
+          <Timer timeRemaining={timeRemaining} />
+          {onPause && gameStarted && timeRemaining > 0 && (
             <button
               onClick={onPause}
               aria-label={isPaused ? "Resume" : "Pause"}
