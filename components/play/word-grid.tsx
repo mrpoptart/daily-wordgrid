@@ -21,32 +21,64 @@ export type WordGridProps = {
   boardDate: string;
 };
 
-type AddedWord = { word: string; score: number; timestamp?: string };
+type AddedWord = { word: string; score: number; timestamp?: string; elapsedAt?: number };
+
+const TIME_LIMIT_SECONDS = 300; // 5 minutes
 
 export function WordGrid({ board, boardDate }: WordGridProps) {
   const [words, setWords] = useState<AddedWord[]>([]);
-  const [boardStartedAt, setBoardStartedAt] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [dragPath, setDragPath] = useState<{ row: number; col: number }[] | null>(null);
-  // isTimeUp is tracked to potentially show modal, but mostly handled by Timer callback
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isTimeUp, setIsTimeUp] = useState(false);
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [feedbacks, setFeedbacks] = useState<FeedbackState[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Pause & timer state
+  const [gameStarted, setGameStarted] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(TIME_LIMIT_SECONDS);
+
+  // Refs for timer logic (avoid stale closures in interval)
+  const elapsedBaseRef = useRef(0);       // accumulated elapsed seconds from DB / previous play sessions
+  const playResumedAtRef = useRef<number | null>(null); // Date.now() when current play session started
+  const userIdRef = useRef<string | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const feedbackTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Helper: get current total elapsed seconds (base + current session delta)
+  const getCurrentElapsed = useCallback(() => {
+    if (playResumedAtRef.current !== null) {
+      const deltaS = (Date.now() - playResumedAtRef.current) / 1000;
+      return Math.min(TIME_LIMIT_SECONDS, elapsedBaseRef.current + deltaS);
+    }
+    return elapsedBaseRef.current;
+  }, []);
+
+  // Helper: sync elapsed seconds to database
+  const syncElapsedToDb = useCallback(async (seconds: number) => {
+    if (!userIdRef.current) return;
+    const { error } = await supabase
+      .from("daily_boards")
+      .update({ elapsed_seconds: seconds })
+      .eq("user_id", userIdRef.current)
+      .eq("board_date", boardDate);
+    if (error) {
+      console.error("Failed to sync elapsed time:", error);
+    }
+  }, [boardDate]);
 
   // Load initial state
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
+        userIdRef.current = data.user.id;
         setUserEmail(data.user.email ?? null);
 
-        // Fetch words
+        // Fetch words (include elapsed_at for categorization)
         supabase
           .from("words")
-          .select("word, score, created_at")
+          .select("word, score, created_at, elapsed_at")
           .eq("user_id", data.user.id)
           .eq("board_date", boardDate)
           .order("created_at", { ascending: true })
@@ -56,23 +88,34 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
               fetchedWords.forEach(w => uniqueWords.set(w.word.toLowerCase(), {
                 word: w.word,
                 score: w.score,
-                timestamp: w.created_at
+                timestamp: w.created_at,
+                elapsedAt: w.elapsed_at ?? undefined
               }));
               setWords(Array.from(uniqueWords.values()));
-
             }
           });
 
-        // Fetch board start time
+        // Fetch board state (elapsed_seconds)
         supabase
           .from("daily_boards")
-          .select("board_started")
+          .select("board_started, elapsed_seconds")
           .eq("user_id", data.user.id)
           .eq("board_date", boardDate)
           .single()
           .then(({ data: boardData }) => {
             if (boardData?.board_started) {
-              setBoardStartedAt(boardData.board_started);
+              const elapsed = boardData.elapsed_seconds ?? 0;
+              elapsedBaseRef.current = elapsed;
+              setGameStarted(true);
+
+              if (elapsed >= TIME_LIMIT_SECONDS) {
+                setTimeRemaining(0);
+                setIsPaused(false);
+              } else {
+                // Always load as paused — user clicks Resume to continue
+                setTimeRemaining(TIME_LIMIT_SECONDS - elapsed);
+                setIsPaused(true);
+              }
             }
           });
       }
@@ -87,25 +130,64 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     };
   }, []);
 
-  // Categorize words
+  // Timer interval — runs only when game is started and not paused
+  useEffect(() => {
+    if (!gameStarted || isPaused) {
+      playResumedAtRef.current = null;
+      return;
+    }
+
+    playResumedAtRef.current = Date.now();
+
+    // Immediate display update
+    setTimeRemaining(Math.max(0, TIME_LIMIT_SECONDS - Math.floor(elapsedBaseRef.current)));
+
+    const interval = setInterval(() => {
+      const deltaS = (Date.now() - playResumedAtRef.current!) / 1000;
+      const currentElapsed = elapsedBaseRef.current + deltaS;
+      const remaining = Math.max(0, TIME_LIMIT_SECONDS - Math.floor(currentElapsed));
+
+      setTimeRemaining(remaining);
+      syncElapsedToDb(Math.floor(currentElapsed));
+
+      if (remaining <= 0) {
+        elapsedBaseRef.current = TIME_LIMIT_SECONDS;
+        syncElapsedToDb(TIME_LIMIT_SECONDS);
+        if (typeof window !== 'undefined') {
+          const key = `wordgrid-time-up-seen-${boardDate}`;
+          if (!localStorage.getItem(key)) {
+            setShowTimeUpModal(true);
+          }
+        }
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameStarted, isPaused, boardDate, syncElapsedToDb]);
+
+  // Sync elapsed time when page is being hidden (tab switch, close, refresh)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && playResumedAtRef.current !== null) {
+        const deltaS = (Date.now() - playResumedAtRef.current) / 1000;
+        const currentElapsed = Math.min(TIME_LIMIT_SECONDS, elapsedBaseRef.current + deltaS);
+        syncElapsedToDb(Math.floor(currentElapsed));
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [syncElapsedToDb]);
+
+  // Categorize words using elapsed_at (play-time based, not wall-clock)
   const { wordsWithinTime, wordsAfterTime, scoreWithinTime, scoreAfterTime } = useMemo(() => {
     const within: AddedWord[] = [];
     const after: AddedWord[] = [];
     let sWithin = 0;
     let sAfter = 0;
 
-    // 5 minutes in ms
-    const TIME_LIMIT = 5 * 60 * 1000;
-
     words.forEach(w => {
-      let isOvertime = false;
-      if (boardStartedAt) {
-        const start = new Date(boardStartedAt).getTime();
-        const wordTime = w.timestamp ? new Date(w.timestamp).getTime() : Date.now();
-        if (wordTime - start > TIME_LIMIT) {
-          isOvertime = true;
-        }
-      }
+      const isOvertime = w.elapsedAt != null && w.elapsedAt >= TIME_LIMIT_SECONDS;
 
       if (isOvertime) {
         after.push(w);
@@ -122,8 +204,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
       scoreWithinTime: sWithin,
       scoreAfterTime: sAfter
     };
-  }, [words, boardStartedAt]);
-
+  }, [words]);
 
   // Calculate highlighted cells based on input or drag
   const highlightedCells = useMemo(() => {
@@ -139,15 +220,38 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     return [];
   }, [input, board, dragPath]);
 
-  const handleTimeUp = useCallback(() => {
-    setIsTimeUp(true);
-    if (typeof window !== 'undefined') {
-      const key = `wordgrid-time-up-seen-${boardDate}`;
-      if (!localStorage.getItem(key)) {
-        setShowTimeUpModal(true);
-      }
+  // Start the game for the first time
+  const handleStart = useCallback(async () => {
+    const now = new Date().toISOString();
+    if (userIdRef.current) {
+      await supabase.from("daily_boards").upsert(
+        { user_id: userIdRef.current, board_date: boardDate, board_started: now, elapsed_seconds: 0 },
+        { onConflict: "user_id, board_date", ignoreDuplicates: true }
+      );
     }
+    elapsedBaseRef.current = 0;
+    setTimeRemaining(TIME_LIMIT_SECONDS);
+    setGameStarted(true);
+    setIsPaused(false);
   }, [boardDate]);
+
+  // Toggle pause/resume
+  const handlePauseToggle = useCallback(() => {
+    if (isPaused) {
+      // Resume
+      setIsPaused(false);
+      inputRef.current?.focus();
+    } else {
+      // Pause: snapshot elapsed time and sync to DB
+      if (playResumedAtRef.current !== null) {
+        const deltaS = (Date.now() - playResumedAtRef.current) / 1000;
+        elapsedBaseRef.current = Math.min(TIME_LIMIT_SECONDS, elapsedBaseRef.current + deltaS);
+        syncElapsedToDb(Math.floor(elapsedBaseRef.current));
+        playResumedAtRef.current = null;
+      }
+      setIsPaused(true);
+    }
+  }, [isPaused, syncElapsedToDb]);
 
   async function handleShare() {
     // Generate breakdown by length
@@ -181,21 +285,12 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     const text = `I got ${scoreWithinTime} points on Daily Word Grid today!
 ${breakdown}`;
 
-    // Note: We append URL to text for clipboard, but for shareData it might depend on platform behavior.
-    // Usually shareData uses 'url' field.
-    // The request asked to include URL in the message.
-    // "Include the total number of points, and then the number of each word length as an emoji and then the number of words of that length. ... URL GOES HERE"
-
     const url = window.location.href;
     const fullText = `${text}${url}`;
 
     const shareData = {
       title: 'Daily Wordgrid',
       text: fullText,
-      // Some platforms ignore 'url' if it's in text, or vice versa.
-      // But typically we should put it in the url field for better integration.
-      // However, if we put it in text, it's safer for copying.
-      // Let's use the requested format in 'text'.
     };
 
     if (navigator.share) {
@@ -222,7 +317,7 @@ ${breakdown}`;
 
   async function handleSubmit(e?: React.FormEvent, explicitWord?: string, explicitPath?: {row: number, col: number}[]) {
     if (e) e.preventDefault();
-    // Allow submission even if time is up
+    if (!gameStarted || isPaused) return;
 
     const trimmed = (explicitWord || input).trim();
     if (!trimmed) return;
@@ -284,8 +379,6 @@ ${breakdown}`;
     const path = findPathForWord(board, trimmed);
     if (!path) {
       toast.error("Not on board");
-      // If not on board, we can't show tooltip on the board because path is null.
-      // We rely on toast.
       setInput("");
       inputRef.current?.focus();
       return;
@@ -308,9 +401,10 @@ ${breakdown}`;
     const word = validation.word || trimmed;
     const score = scoreWordLength(word.length);
     const now = new Date().toISOString();
+    const currentElapsed = getCurrentElapsed();
 
     // Optimistic update
-    const newWord = { word, score, timestamp: now };
+    const newWord = { word, score, timestamp: now, elapsedAt: Math.floor(currentElapsed) };
     setWords(prev => [...prev, newWord]);
     setInput("");
     inputRef.current?.focus();
@@ -318,32 +412,23 @@ ${breakdown}`;
     showFeedback('success', `+${score}`);
 
     // Persist
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      // Start board if needed
-      if (!boardStartedAt) {
-        setBoardStartedAt(now);
-        await supabase
-          .from("daily_boards")
-          .upsert(
-            { user_id: data.user.id, board_date: boardDate, board_started: now },
-            { onConflict: "user_id, board_date", ignoreDuplicates: true }
-          );
-      }
-
+    if (userIdRef.current) {
       const { error } = await supabase.from("words").insert({
-        user_id: data.user.id,
+        user_id: userIdRef.current,
         board_date: boardDate,
         word,
         score,
+        elapsed_at: Math.floor(currentElapsed),
       });
 
       if (error) {
         console.error("Failed to save word:", error);
         toast.error("Failed to save word");
         setWords(prev => prev.filter(w => w.word !== word));
-        // Reset last found word if failed? Maybe not needed for UX smooth flow
       }
+
+      // Piggyback: sync elapsed time on word submit
+      syncElapsedToDb(Math.floor(currentElapsed));
     }
   }
 
@@ -405,17 +490,56 @@ ${breakdown}`;
     }
   };
 
+  // Board area: not started → Start button, paused → Resume button, playing → Board
+  const renderBoardArea = () => {
+    if (!gameStarted) {
+      return (
+        <div className="flex aspect-square items-center justify-center rounded-lg border border-white/10 bg-slate-900/80">
+          <button
+            onClick={handleStart}
+            className="flex flex-col items-center gap-3 text-slate-300 hover:text-emerald-300 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <polygon points="6 3 20 12 6 21 6 3" />
+            </svg>
+            <span className="text-lg font-semibold">Start</span>
+          </button>
+        </div>
+      );
+    }
+
+    if (isPaused) {
+      return (
+        <div className="flex aspect-square items-center justify-center rounded-lg border border-white/10 bg-slate-900/80">
+          <button
+            onClick={handlePauseToggle}
+            className="flex flex-col items-center gap-3 text-slate-300 hover:text-emerald-300 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <polygon points="6 3 20 12 6 21 6 3" />
+            </svg>
+            <span className="text-lg font-semibold">Resume</span>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <BoardComponent
+        board={board}
+        highlightedCells={highlightedCells}
+        onInteraction={handleInteraction}
+        feedbacks={feedbacks}
+      />
+    );
+  };
+
   return (
     <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-[1fr_400px]">
       {/* Board Column */}
       <div className="flex justify-center lg:justify-start">
         <div className="w-full sm:max-w-[360px] md:max-w-[420px] lg:max-w-[500px]">
-          <BoardComponent
-            board={board}
-            highlightedCells={highlightedCells}
-            onInteraction={handleInteraction}
-            feedbacks={feedbacks}
-          />
+          {renderBoardArea()}
         </div>
       </div>
 
@@ -428,13 +552,15 @@ ${breakdown}`;
           onSubmit={handleSubmit}
           scoreWithinTime={scoreWithinTime}
           scoreAfterTime={scoreAfterTime}
-          boardStartedAt={boardStartedAt}
-          onTimeUp={handleTimeUp}
+          timeRemaining={timeRemaining}
+          gameStarted={gameStarted}
           wordsWithinTime={wordsWithinTime}
           wordsAfterTime={wordsAfterTime}
           onShare={handleShare}
           userEmail={userEmail}
           onLogout={handleLogout}
+          isPaused={isPaused}
+          onPause={handlePauseToggle}
         />
       </div>
 

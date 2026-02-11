@@ -11,14 +11,16 @@ interface ActionPanelProps {
   onSubmit: (e: React.FormEvent) => void;
   scoreWithinTime: number;
   scoreAfterTime: number;
-  boardStartedAt: string | null;
-  onTimeUp: () => void;
+  timeRemaining: number;
+  gameStarted: boolean;
   wordsWithinTime: { word: string; score: number }[];
   wordsAfterTime: { word: string; score: number }[];
   inputRef?: React.RefObject<HTMLInputElement | null>;
   onShare?: () => void;
   userEmail: string | null;
   onLogout: () => void;
+  isPaused?: boolean;
+  onPause?: () => void;
 }
 
 export function ActionPanel({
@@ -27,15 +29,19 @@ export function ActionPanel({
   onSubmit,
   scoreWithinTime,
   scoreAfterTime,
-  boardStartedAt,
-  onTimeUp,
+  timeRemaining,
+  gameStarted,
   wordsWithinTime,
   wordsAfterTime,
   inputRef,
   onShare,
   userEmail,
-  onLogout
+  onLogout,
+  isPaused = false,
+  onPause
 }: ActionPanelProps) {
+  const inputDisabled = isPaused || !gameStarted;
+
   return (
     <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 md:p-0">
       <div className="flex flex-col gap-2">
@@ -49,10 +55,12 @@ export function ActionPanel({
             className="border-white/10 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
             autoComplete="off"
             autoFocus
+            disabled={inputDisabled}
           />
           <Button
             type="submit"
             className="bg-emerald-500 text-white hover:bg-emerald-600"
+            disabled={inputDisabled}
           >
             Submit
           </Button>
@@ -68,7 +76,25 @@ export function ActionPanel({
         </div>
         <div className="flex flex-1 justify-center items-center gap-2 text-sm text-slate-100">
           <span className="font-semibold text-emerald-300">Time:</span>{" "}
-          <Timer boardStartedAt={boardStartedAt} onTimeUp={onTimeUp} />
+          <Timer timeRemaining={timeRemaining} />
+          {onPause && gameStarted && timeRemaining > 0 && (
+            <button
+              onClick={onPause}
+              aria-label={isPaused ? "Resume" : "Pause"}
+              className="ml-1 text-slate-400 hover:text-emerald-300 transition-colors"
+            >
+              {isPaused ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                  <polygon points="6 3 20 12 6 21 6 3" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                  <rect x="5" y="3" width="5" height="18" rx="1" />
+                  <rect x="14" y="3" width="5" height="18" rx="1" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
         <div className="flex flex-1 justify-end">
           {onShare && (
