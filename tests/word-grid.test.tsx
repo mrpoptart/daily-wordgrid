@@ -27,7 +27,12 @@ describe("WordGrid", () => {
   it("allows typing a word and submitting", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
+    // Start the game first
+    fireEvent.click(screen.getByText("Start"));
+
     const input = screen.getByPlaceholderText(/enter word/i);
+    await waitFor(() => expect(input).not.toBeDisabled());
+
     fireEvent.change(input, { target: { value: "TEST" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
@@ -42,14 +47,12 @@ describe("WordGrid", () => {
   it("highlights the board when typing a valid word", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
+    fireEvent.click(screen.getByText("Start"));
+
     const input = screen.getByPlaceholderText(/enter word/i);
+    await waitFor(() => expect(input).not.toBeDisabled());
+
     fireEvent.change(input, { target: { value: "TEST" } });
-
-    // Assuming highlighted cells have a specific class or style.
-    // In my implementation: bg-[#3A7AFE] text-white
-
-    // We can check if the cells are highlighted by checking classes
-    // The cells are divs with text content.
 
     // T (0,0)
     const tiles = screen.getAllByText("T");
@@ -64,18 +67,18 @@ describe("WordGrid", () => {
   it("does not submit invalid words and clears input", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
+    fireEvent.click(screen.getByText("Start"));
+
     const input = screen.getByPlaceholderText(/enter word/i) as HTMLInputElement;
+    await waitFor(() => expect(input).not.toBeDisabled());
+
     fireEvent.change(input, { target: { value: "ZZZZ" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
     fireEvent.click(submitButton);
 
-    // Should verify toast error or no word added
-    // Toasts are hard to test with just screen.getByText depending on the library
-    // But we can check that the word is NOT in the list
     expect(screen.queryByText("ZZZZ")).not.toBeInTheDocument();
 
-    // Verify input is cleared (since ZZZZ is not on board or not in dictionary, both clear input now)
     await waitFor(() => {
         expect(input.value).toBe("");
     });
@@ -84,8 +87,11 @@ describe("WordGrid", () => {
   it("clears input when word is on board but not in dictionary", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
-    // "AAAA" is on the board (row 1, cols 0-3) but likely not in dictionary
+    fireEvent.click(screen.getByText("Start"));
+
     const input = screen.getByPlaceholderText(/enter word/i) as HTMLInputElement;
+    await waitFor(() => expect(input).not.toBeDisabled());
+
     fireEvent.change(input, { target: { value: "AAAA" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
@@ -101,7 +107,11 @@ describe("WordGrid", () => {
   it("does not submit words shorter than 4 letters", async () => {
     render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
 
+    fireEvent.click(screen.getByText("Start"));
+
     const input = screen.getByPlaceholderText(/enter word/i);
+    await waitFor(() => expect(input).not.toBeDisabled());
+
     fireEvent.change(input, { target: { value: "TES" } });
 
     const submitButton = screen.getByRole("button", { name: /submit/i });
