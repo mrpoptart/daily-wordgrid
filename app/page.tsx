@@ -38,7 +38,7 @@ export default async function Home() {
               Daily Wordgrid
             </h1>
             <p className="text-lg leading-relaxed text-slate-300 sm:text-xl">
-              Find as many words as you can in 3 minutes. Everyone plays the same board. One chance per day.
+              Connect adjacent letters to spell as many words as you can in 5 minutes. A new board every day — one chance to play.
             </p>
           </div>
           <div className="w-full max-w-md mx-auto lg:mx-0">
