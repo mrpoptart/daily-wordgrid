@@ -46,6 +46,21 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const feedbackTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
+  // Detect touch devices to avoid focusing the input (which opens virtual keyboard)
+  const isTouchDevice = useRef(false);
+  useEffect(() => {
+    isTouchDevice.current = window.matchMedia('(pointer: coarse)').matches;
+    if (!isTouchDevice.current) {
+      inputRef.current?.focus();
+    }
+  }, []);
+
+  const focusInput = useCallback(() => {
+    if (!isTouchDevice.current) {
+      inputRef.current?.focus();
+    }
+  }, []);
+
   // Helper: get current total elapsed seconds (base + current session delta)
   const getCurrentElapsed = useCallback(() => {
     if (playResumedAtRef.current !== null) {
@@ -240,7 +255,7 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
     if (isPaused) {
       // Resume
       setIsPaused(false);
-      inputRef.current?.focus();
+      focusInput();
     } else {
       // Pause: snapshot elapsed time and sync to DB
       if (playResumedAtRef.current !== null) {
@@ -312,7 +327,7 @@ ${breakdown}`;
     if (typeof window !== 'undefined') {
       localStorage.setItem(`wordgrid-time-up-seen-${boardDate}`, 'true');
     }
-    inputRef.current?.focus();
+    focusInput();
   }
 
   async function handleSubmit(e?: React.FormEvent, explicitWord?: string, explicitPath?: {row: number, col: number}[]) {
@@ -362,7 +377,7 @@ ${breakdown}`;
       toast.error("Too short", { description: `Minimum ${MIN_PATH_LENGTH} letters` });
       showFeedback('invalid');
       setInput("");
-      inputRef.current?.focus();
+      focusInput();
       return;
     }
 
@@ -371,7 +386,7 @@ ${breakdown}`;
       toast.error("Already found");
       showFeedback('duplicate');
       setInput("");
-      inputRef.current?.focus();
+      focusInput();
       return;
     }
 
@@ -380,7 +395,7 @@ ${breakdown}`;
     if (!path) {
       toast.error("Not on board");
       setInput("");
-      inputRef.current?.focus();
+      focusInput();
       return;
     }
 
@@ -394,7 +409,7 @@ ${breakdown}`;
        }
        showFeedback('invalid');
        setInput("");
-       inputRef.current?.focus();
+       focusInput();
        return;
     }
 
@@ -407,7 +422,7 @@ ${breakdown}`;
     const newWord = { word, score, timestamp: now, elapsedAt: Math.floor(currentElapsed) };
     setWords(prev => [...prev, newWord]);
     setInput("");
-    inputRef.current?.focus();
+    focusInput();
     toast.success(`Found ${word}`, { description: `+${score} points` });
     showFeedback('success', `+${score}`);
 

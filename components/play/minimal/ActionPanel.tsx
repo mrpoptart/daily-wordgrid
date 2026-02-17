@@ -54,7 +54,6 @@ export function ActionPanel({
             placeholder="enter word"
             className="border-white/10 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
             autoComplete="off"
-            autoFocus
             disabled={inputDisabled}
           />
           <Button
