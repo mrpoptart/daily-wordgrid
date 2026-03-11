@@ -2,8 +2,10 @@
 
 import { Timer } from "./Timer";
 import { FoundWords } from "./FoundWords";
+import { WordLengthDistribution } from "./WordLengthDistribution";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import type { WordLengthCounts } from "@/lib/board/solver";
 
 interface ActionPanelProps {
   input: string;
@@ -15,6 +17,8 @@ interface ActionPanelProps {
   gameStarted: boolean;
   wordsWithinTime: { word: string; score: number }[];
   wordsAfterTime: { word: string; score: number }[];
+  wordLengthCounts: WordLengthCounts;
+  foundLengthCounts: WordLengthCounts;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   onShare?: () => void;
   userEmail: string | null;
@@ -33,6 +37,8 @@ export function ActionPanel({
   gameStarted,
   wordsWithinTime,
   wordsAfterTime,
+  wordLengthCounts,
+  foundLengthCounts,
   inputRef,
   onShare,
   userEmail,
@@ -122,6 +128,8 @@ export function ActionPanel({
           )}
         </div>
       </div>
+
+      <WordLengthDistribution totalCounts={wordLengthCounts} foundCounts={foundLengthCounts} />
 
       <FoundWords wordsWithinTime={wordsWithinTime} wordsAfterTime={wordsAfterTime} />
 

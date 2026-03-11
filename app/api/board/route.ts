@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateBoardForDate } from "@/lib/board/generate";
+import { findAllBoardWords, computeWordLengthCounts, type WordLengthCounts } from "@/lib/board/solver";
 import type { Board, BoardRow } from "@/lib/board/types";
 import {
   flattenBoard,
@@ -18,14 +19,15 @@ export type BoardResponse = {
   date: string; // YYYY-MM-DD
   board: Board;
   letters: string; // flattened 25-letter string
+  wordLengthCounts: WordLengthCounts;
   env: {
     hasDailySalt: boolean;
   };
 };
 
-export async function GET(req?: Request) {
-  const url = req ? new URL(req.url) : null;
-  const dateParam = url ? url.searchParams.get("date") : null;
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const dateParam = url.searchParams.get("date");
 
   // We ignore timezone params and headers, enforcing default ET.
   const date = resolveBoardDate(dateParam);
@@ -87,11 +89,49 @@ export async function GET(req?: Request) {
       }
   }
 
+  // Fetch or compute word length counts
+  let wordLengthCounts: WordLengthCounts;
+  const { data: cached } = await supabaseAdmin
+    .from("board_word_counts")
+    .select("count_4, count_5, count_6, count_7, count_8_plus")
+    .eq("board_date", date)
+    .single();
+
+  if (cached) {
+    wordLengthCounts = {
+      "4": cached.count_4,
+      "5": cached.count_5,
+      "6": cached.count_6,
+      "7": cached.count_7,
+      "8+": cached.count_8_plus,
+    };
+  } else {
+    const allWords = findAllBoardWords(board);
+    wordLengthCounts = computeWordLengthCounts(allWords);
+
+    // Persist to DB (fire-and-forget, ignore errors from race conditions)
+    supabaseAdmin
+      .from("board_word_counts")
+      .insert({
+        board_date: date,
+        total_words: allWords.length,
+        count_4: wordLengthCounts["4"],
+        count_5: wordLengthCounts["5"],
+        count_6: wordLengthCounts["6"],
+        count_7: wordLengthCounts["7"],
+        count_8_plus: wordLengthCounts["8+"],
+      })
+      .then(({ error }) => {
+        if (error) console.error("Failed to cache word counts:", error);
+      });
+  }
+
   const body: BoardResponse = {
     status: "ok",
     date,
     board,
     letters,
+    wordLengthCounts,
     env: { hasDailySalt },
   };
 

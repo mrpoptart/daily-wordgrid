@@ -5,6 +5,7 @@ import {
   resolveDailySalt,
 } from "@/lib/board/api-helpers";
 import { generateBoardForDate } from "@/lib/board/generate";
+import { findAllBoardWords, computeWordLengthCounts } from "@/lib/board/solver";
 import { resolveBaseUrl } from "@/lib/url";
 
 const FALLBACK_BASE_URL = "http://localhost:3000";
@@ -32,12 +33,14 @@ function buildLocalBoardResponse(): BoardResponse {
   const date = resolveBoardDate(null);
   const { salt, hasDailySalt } = resolveDailySalt();
   const board = generateBoardForDate(date, salt);
+  const allWords = findAllBoardWords(board);
 
   return {
     status: "ok",
     date,
     board,
     letters: flattenBoard(board),
+    wordLengthCounts: computeWordLengthCounts(allWords),
     env: {
       hasDailySalt,
     },

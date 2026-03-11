@@ -11,6 +11,7 @@ import {
 } from "@/lib/validation/words";
 import { scoreWordLength } from "@/lib/scoring";
 import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
+import type { WordLengthCounts } from "@/lib/board/solver";
 
 import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
 import { ActionPanel } from "./minimal/ActionPanel";
@@ -19,13 +20,14 @@ import { TimeUpModal } from "./minimal/TimeUpModal";
 export type WordGridProps = {
   board: Board;
   boardDate: string;
+  wordLengthCounts: WordLengthCounts;
 };
 
 type AddedWord = { word: string; score: number; timestamp?: string; elapsedAt?: number };
 
 const TIME_LIMIT_SECONDS = 300; // 5 minutes
 
-export function WordGrid({ board, boardDate }: WordGridProps) {
+export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) {
   const [words, setWords] = useState<AddedWord[]>([]);
   const [input, setInput] = useState("");
   const [dragPath, setDragPath] = useState<{ row: number; col: number }[] | null>(null);
@@ -195,11 +197,12 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
   }, [syncElapsedToDb]);
 
   // Categorize words using elapsed_at (play-time based, not wall-clock)
-  const { wordsWithinTime, wordsAfterTime, scoreWithinTime, scoreAfterTime } = useMemo(() => {
+  const { wordsWithinTime, wordsAfterTime, scoreWithinTime, scoreAfterTime, foundLengthCounts } = useMemo(() => {
     const within: AddedWord[] = [];
     const after: AddedWord[] = [];
     let sWithin = 0;
     let sAfter = 0;
+    const foundCounts: WordLengthCounts = { "4": 0, "5": 0, "6": 0, "7": 0, "8+": 0 };
 
     words.forEach(w => {
       const isOvertime = w.elapsedAt != null && w.elapsedAt >= TIME_LIMIT_SECONDS;
@@ -211,13 +214,19 @@ export function WordGrid({ board, boardDate }: WordGridProps) {
         within.push(w);
         sWithin += w.score;
       }
+
+      // Count by length bucket (all words, including overtime)
+      const len = w.word.length;
+      if (len >= 8) foundCounts["8+"]++;
+      else if (len >= 4) foundCounts[String(len)]++;
     });
 
     return {
       wordsWithinTime: within.sort((a, b) => a.word.localeCompare(b.word)),
       wordsAfterTime: after.sort((a, b) => a.word.localeCompare(b.word)),
       scoreWithinTime: sWithin,
-      scoreAfterTime: sAfter
+      scoreAfterTime: sAfter,
+      foundLengthCounts: foundCounts,
     };
   }, [words]);
 
@@ -571,6 +580,8 @@ ${breakdown}`;
           gameStarted={gameStarted}
           wordsWithinTime={wordsWithinTime}
           wordsAfterTime={wordsAfterTime}
+          wordLengthCounts={wordLengthCounts}
+          foundLengthCounts={foundLengthCounts}
           onShare={handleShare}
           userEmail={userEmail}
           onLogout={handleLogout}

@@ -40,7 +40,7 @@ export default async function PlayPage() {
       <RequireAuth>
         <UserLastLoginUpdater />
         <div className="mx-auto max-w-5xl px-[5px] sm:px-4 py-8 lg:py-16">
-          <WordGrid board={boardData.board} boardDate={boardData.date} />
+          <WordGrid board={boardData.board} boardDate={boardData.date} wordLengthCounts={boardData.wordLengthCounts} />
         </div>
       </RequireAuth>
     </div>
