@@ -25,7 +25,7 @@ const testBoard: Board = [
 
 describe("WordGrid", () => {
   it("allows typing a word and submitting", async () => {
-    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" wordLengthCounts={{ "4": 10, "5": 5, "6": 2, "7": 1, "8+": 0 }} />);
 
     // Start the game first
     fireEvent.click(screen.getByText("Start"));
@@ -45,7 +45,7 @@ describe("WordGrid", () => {
   });
 
   it("highlights the board when typing a valid word", async () => {
-    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" wordLengthCounts={{ "4": 10, "5": 5, "6": 2, "7": 1, "8+": 0 }} />);
 
     fireEvent.click(screen.getByText("Start"));
 
@@ -65,7 +65,7 @@ describe("WordGrid", () => {
   });
 
   it("does not submit invalid words and clears input", async () => {
-    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" wordLengthCounts={{ "4": 10, "5": 5, "6": 2, "7": 1, "8+": 0 }} />);
 
     fireEvent.click(screen.getByText("Start"));
 
@@ -85,7 +85,7 @@ describe("WordGrid", () => {
   });
 
   it("clears input when word is on board but not in dictionary", async () => {
-    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" wordLengthCounts={{ "4": 10, "5": 5, "6": 2, "7": 1, "8+": 0 }} />);
 
     fireEvent.click(screen.getByText("Start"));
 
@@ -105,7 +105,7 @@ describe("WordGrid", () => {
   });
 
   it("does not submit words shorter than 4 letters", async () => {
-    render(<WordGrid board={testBoard} boardDate="2024-01-01" />);
+    render(<WordGrid board={testBoard} boardDate="2024-01-01" wordLengthCounts={{ "4": 10, "5": 5, "6": 2, "7": 1, "8+": 0 }} />);
 
     fireEvent.click(screen.getByText("Start"));
 

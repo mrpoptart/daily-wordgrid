@@ -73,7 +73,7 @@ describe("Leaderboard page", () => {
       json: async () => sampleResponse,
     });
 
-    const page = await LeaderboardPage({ searchParams: { date: "2025-02-02" } });
+    const page = await LeaderboardPage({ searchParams: Promise.resolve({ date: "2025-02-02" }) });
     render(page);
 
     expect(fetch).toHaveBeenCalledWith("http://localhost:3000/api/leaderboard?date=2025-02-02", {
@@ -87,7 +87,7 @@ describe("Leaderboard page", () => {
       json: async () => sampleResponse,
     });
 
-    const page = await LeaderboardPage({ searchParams: { date: "02-02-2025" } });
+    const page = await LeaderboardPage({ searchParams: Promise.resolve({ date: "02-02-2025" }) });
     render(page);
 
     expect(fetch).toHaveBeenCalledWith("http://localhost:3000/api/leaderboard", { cache: "no-store" });

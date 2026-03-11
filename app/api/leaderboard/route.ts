@@ -122,10 +122,10 @@ function errorResponse(error: LeaderboardError, status: number) {
   return NextResponse.json(body, { status });
 }
 
-export async function GET(req?: Request) {
-  const url = req ? new URL(req.url) : null;
-  const dateParam = url ? url.searchParams.get("date") : null;
-  const limitParam = url ? url.searchParams.get("limit") : null;
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const dateParam = url.searchParams.get("date");
+  const limitParam = url.searchParams.get("limit");
 
   // Ignore timezone params and headers
   const date = resolveBoardDate(dateParam);
