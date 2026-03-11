@@ -76,9 +76,10 @@ async function fetchLeaderboard(params?: LeaderboardSearchParams): Promise<Leade
 export default async function LeaderboardPage({
   searchParams,
 }: {
-  searchParams?: LeaderboardSearchParams;
+  searchParams?: Promise<LeaderboardSearchParams>;
 }) {
-  const data = await fetchLeaderboard(searchParams);
+  const params = await searchParams;
+  const data = await fetchLeaderboard(params);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
