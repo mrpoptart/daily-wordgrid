@@ -34,6 +34,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [feedbacks, setFeedbacks] = useState<FeedbackState[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [streak, setStreak] = useState(0);
 
   // Pause & timer state
   const [gameStarted, setGameStarted] = useState(false);
@@ -111,6 +112,21 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
               setWords(Array.from(uniqueWords.values()));
             }
           });
+
+        // Fetch streak
+        supabase.auth.getSession().then(({ data: sessionData }) => {
+          const accessToken = sessionData.session?.access_token;
+          if (accessToken) {
+            fetch("/api/streak", {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.streak > 0) setStreak(data.streak);
+              })
+              .catch(() => {});
+          }
+        });
 
         // Fetch board state (elapsed_seconds)
         supabase
@@ -523,6 +539,11 @@ ${breakdown}`;
             onClick={handleStart}
             className="flex flex-col items-center gap-3 text-slate-300 hover:text-emerald-300 transition-colors"
           >
+            {streak > 0 && (
+              <span className="text-sm font-medium text-amber-400">
+                Continue your {streak} day streak
+              </span>
+            )}
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <polygon points="6 3 20 12 6 21 6 3" />
             </svg>
@@ -539,6 +560,11 @@ ${breakdown}`;
             onClick={handlePauseToggle}
             className="flex flex-col items-center gap-3 text-slate-300 hover:text-emerald-300 transition-colors"
           >
+            {streak > 0 && (
+              <span className="text-sm font-medium text-amber-400">
+                Continue your {streak} day streak
+              </span>
+            )}
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <polygon points="6 3 20 12 6 21 6 3" />
             </svg>
