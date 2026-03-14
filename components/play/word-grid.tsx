@@ -113,20 +113,42 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
             }
           });
 
-        // Fetch streak
-        supabase.auth.getSession().then(({ data: sessionData }) => {
-          const accessToken = sessionData.session?.access_token;
-          if (accessToken) {
-            fetch("/api/streak", {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.streak > 0) setStreak(data.streak);
-              })
-              .catch(() => {});
-          }
-        });
+        // Fetch streak (direct query, no API round-trip)
+        supabase
+          .from("daily_boards")
+          .select("board_date")
+          .eq("user_id", data.user.id)
+          .gte("elapsed_seconds", TIME_LIMIT_SECONDS)
+          .order("board_date", { ascending: false })
+          .then(({ data: completedDays }) => {
+            if (!completedDays?.length) return;
+            const completedSet = new Set(completedDays.map((d: { board_date: string }) => d.board_date));
+            let count = 0;
+            const cur = new Date(boardDate + "T12:00:00Z");
+            // Start from today or yesterday
+            if (completedSet.has(boardDate)) {
+              count = 1;
+            } else {
+              cur.setDate(cur.getDate() - 1);
+              const yesterday = cur.toISOString().slice(0, 10);
+              if (completedSet.has(yesterday)) {
+                count = 1;
+              } else {
+                return;
+              }
+            }
+            // Count backwards
+            while (true) {
+              cur.setDate(cur.getDate() - 1);
+              const dateStr = cur.toISOString().slice(0, 10);
+              if (completedSet.has(dateStr)) {
+                count++;
+              } else {
+                break;
+              }
+            }
+            setStreak(count);
+          });
 
         // Fetch board state (elapsed_seconds)
         supabase
