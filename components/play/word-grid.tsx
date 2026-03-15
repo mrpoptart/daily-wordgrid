@@ -34,6 +34,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [feedbacks, setFeedbacks] = useState<FeedbackState[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [streak, setStreak] = useState(0);
 
   // Pause & timer state
   const [gameStarted, setGameStarted] = useState(false);
@@ -110,6 +111,43 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
               }));
               setWords(Array.from(uniqueWords.values()));
             }
+          });
+
+        // Fetch streak (direct query, no API round-trip)
+        supabase
+          .from("daily_boards")
+          .select("board_date")
+          .eq("user_id", data.user.id)
+          .gte("elapsed_seconds", TIME_LIMIT_SECONDS)
+          .order("board_date", { ascending: false })
+          .then(({ data: completedDays }) => {
+            if (!completedDays?.length) return;
+            const completedSet = new Set(completedDays.map((d: { board_date: string }) => d.board_date));
+            let count = 0;
+            const cur = new Date(boardDate + "T12:00:00Z");
+            // Start from today or yesterday
+            if (completedSet.has(boardDate)) {
+              count = 1;
+            } else {
+              cur.setDate(cur.getDate() - 1);
+              const yesterday = cur.toISOString().slice(0, 10);
+              if (completedSet.has(yesterday)) {
+                count = 1;
+              } else {
+                return;
+              }
+            }
+            // Count backwards
+            while (true) {
+              cur.setDate(cur.getDate() - 1);
+              const dateStr = cur.toISOString().slice(0, 10);
+              if (completedSet.has(dateStr)) {
+                count++;
+              } else {
+                break;
+              }
+            }
+            setStreak(count);
           });
 
         // Fetch board state (elapsed_seconds)
@@ -523,6 +561,11 @@ ${breakdown}`;
             onClick={handleStart}
             className="flex flex-col items-center gap-3 text-slate-300 hover:text-emerald-300 transition-colors"
           >
+            {streak > 0 && (
+              <span className="text-sm font-medium text-amber-400">
+                Continue your {streak} day streak
+              </span>
+            )}
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <polygon points="6 3 20 12 6 21 6 3" />
             </svg>
@@ -539,6 +582,11 @@ ${breakdown}`;
             onClick={handlePauseToggle}
             className="flex flex-col items-center gap-3 text-slate-300 hover:text-emerald-300 transition-colors"
           >
+            {streak > 0 && (
+              <span className="text-sm font-medium text-amber-400">
+                Continue your {streak} day streak
+              </span>
+            )}
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <polygon points="6 3 20 12 6 21 6 3" />
             </svg>
