@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 
 import type { Board } from "@/lib/board/types";
+import type { WordLengthCounts } from "@/lib/board/solver";
 import {
   findPathForWord,
   validateWord,
@@ -14,15 +15,17 @@ import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
 import { flattenBoard } from "@/lib/board/api-helpers";
 
 import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
+import { WordLengthDistribution } from "./minimal/WordLengthDistribution";
 import { WordList } from "./minimal/WordList";
 
 export type SharedWordGridProps = {
   board: Board;
+  wordLengthCounts: WordLengthCounts;
 };
 
 type AddedWord = { word: string; score: number };
 
-export function SharedWordGrid({ board }: SharedWordGridProps) {
+export function SharedWordGrid({ board, wordLengthCounts }: SharedWordGridProps) {
   // Generate a unique key for this board
   const boardKey = useMemo(() => `shared-words-${flattenBoard(board)}`, [board]);
 
@@ -40,6 +43,17 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
   // Sort words alphabetically
   const sortedWords = useMemo(() => {
     return [...words].sort((a, b) => a.word.localeCompare(b.word));
+  }, [words]);
+
+  // Compute found word length counts for the distribution indicator
+  const foundLengthCounts = useMemo(() => {
+    const counts: WordLengthCounts = { "4": 0, "5": 0, "6": 0, "7": 0, "8+": 0 };
+    words.forEach(w => {
+      const len = w.word.length;
+      if (len >= 8) counts["8+"]++;
+      else if (len >= 4) counts[String(len)]++;
+    });
+    return counts;
   }, [words]);
 
   // Calculate highlighted cells based on input or drag
@@ -316,6 +330,9 @@ export function SharedWordGrid({ board }: SharedWordGridProps) {
             Minimum {MIN_PATH_LENGTH} letters. Drag on the board or type to find words.
           </p>
         </div>
+
+        {/* Word Length Distribution */}
+        <WordLengthDistribution totalCounts={wordLengthCounts} foundCounts={foundLengthCounts} />
 
         {/* Words List */}
         <div className="bg-slate-800/50 border border-white/10 rounded-lg p-4">
