@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { urlIdToBoard } from "@/lib/board/api-helpers";
+import { findAllBoardWords, computeWordLengthCounts } from "@/lib/board/solver";
 import { SharedWordGrid } from "@/components/play/shared-word-grid";
 
 export const dynamic = "force-dynamic";
@@ -29,5 +30,8 @@ export default async function SharedBoardPage({ params }: SharedBoardPageProps) 
     notFound();
   }
 
-  return <SharedWordGrid board={board} />;
+  const allWords = findAllBoardWords(board);
+  const wordLengthCounts = computeWordLengthCounts(allWords);
+
+  return <SharedWordGrid board={board} wordLengthCounts={wordLengthCounts} />;
 }
