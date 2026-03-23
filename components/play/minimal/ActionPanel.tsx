@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { Timer } from "./Timer";
 import { FoundWords } from "./FoundWords";
 import { WordLengthDistribution } from "./WordLengthDistribution";
@@ -51,6 +52,20 @@ export function ActionPanel({
   onRevealWords
 }: ActionPanelProps) {
   const inputDisabled = isPaused || !gameStarted || !!revealedWords;
+
+  const [selectedLengthBuckets, setSelectedLengthBuckets] = useState<Set<string>>(new Set());
+
+  const handleToggleBucket = useCallback((bucket: string) => {
+    setSelectedLengthBuckets(prev => {
+      const next = new Set(prev);
+      if (next.has(bucket)) {
+        next.delete(bucket);
+      } else {
+        next.add(bucket);
+      }
+      return next;
+    });
+  }, []);
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 md:p-0">
@@ -133,13 +148,19 @@ export function ActionPanel({
         </div>
       </div>
 
-      <WordLengthDistribution totalCounts={wordLengthCounts} foundCounts={foundLengthCounts} />
+      <WordLengthDistribution
+        totalCounts={wordLengthCounts}
+        foundCounts={foundLengthCounts}
+        selectedBuckets={selectedLengthBuckets}
+        onToggleBucket={handleToggleBucket}
+      />
 
       <FoundWords
         wordsWithinTime={wordsWithinTime}
         wordsAfterTime={wordsAfterTime}
         revealedWords={revealedWords}
         onRevealWords={onRevealWords}
+        selectedLengthBuckets={selectedLengthBuckets}
       />
 
       {userEmail && (

@@ -4,15 +4,33 @@ import { useMemo, useRef } from "react";
 import { WordList } from "./WordList";
 import { scoreWordLength } from "@/lib/scoring";
 
+function wordLengthBucket(word: string): string {
+  const len = word.length;
+  if (len <= 7) return String(len);
+  return "8+";
+}
+
 interface FoundWordsProps {
   wordsWithinTime: { word: string; score: number }[];
   wordsAfterTime: { word: string; score: number }[];
   revealedWords?: string[] | null;
   onRevealWords?: () => void;
+  selectedLengthBuckets?: Set<string>;
 }
 
-export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onRevealWords }: FoundWordsProps) {
+export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onRevealWords, selectedLengthBuckets }: FoundWordsProps) {
   const listRef = useRef<HTMLDivElement>(null);
+
+  const hasFilter = selectedLengthBuckets && selectedLengthBuckets.size > 0;
+
+  const filteredWithinTime = useMemo(
+    () => hasFilter ? wordsWithinTime.filter(w => selectedLengthBuckets.has(wordLengthBucket(w.word))) : wordsWithinTime,
+    [wordsWithinTime, hasFilter, selectedLengthBuckets]
+  );
+  const filteredAfterTime = useMemo(
+    () => hasFilter ? wordsAfterTime.filter(w => selectedLengthBuckets.has(wordLengthBucket(w.word))) : wordsAfterTime,
+    [wordsAfterTime, hasFilter, selectedLengthBuckets]
+  );
 
   // Build the combined word list when revealed
   const allWordsDisplay = useMemo(() => {
@@ -31,6 +49,12 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onR
       .sort((a, b) => a.word.localeCompare(b.word));
   }, [revealedWords, wordsWithinTime, wordsAfterTime]);
 
+  const filteredAllWordsDisplay = useMemo(() => {
+    if (!allWordsDisplay) return null;
+    if (!hasFilter) return allWordsDisplay;
+    return allWordsDisplay.filter(w => selectedLengthBuckets!.has(wordLengthBucket(w.word)));
+  }, [allWordsDisplay, hasFilter, selectedLengthBuckets]);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -41,9 +65,9 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onR
           ref={listRef}
           className="flex max-h-[300px] flex-col overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-700"
         >
-          {revealedWords && allWordsDisplay ? (
+          {revealedWords && filteredAllWordsDisplay ? (
             <>
-              {allWordsDisplay.map((w, i) => (
+              {filteredAllWordsDisplay.map((w, i) => (
                 <div
                   key={`revealed-${i}`}
                   className={`flex justify-between py-1 text-sm ${
@@ -57,22 +81,24 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onR
                 </div>
               ))}
               <div className="mt-2 text-xs text-slate-500">
-                {allWordsDisplay.filter(w => w.found).length} / {allWordsDisplay.length} words found
+                {filteredAllWordsDisplay.filter(w => w.found).length} / {filteredAllWordsDisplay.length} words found
               </div>
             </>
-          ) : wordsWithinTime.length === 0 && wordsAfterTime.length === 0 ? (
-            <p className="text-sm italic text-slate-500">No words found yet</p>
+          ) : filteredWithinTime.length === 0 && filteredAfterTime.length === 0 ? (
+            <p className="text-sm italic text-slate-500">
+              {hasFilter ? "No words of this length" : "No words found yet"}
+            </p>
           ) : (
             <>
-              <WordList words={wordsWithinTime} emptyMessage="" />
+              <WordList words={filteredWithinTime} emptyMessage="" />
 
-              {wordsAfterTime.length > 0 && (
+              {filteredAfterTime.length > 0 && (
                 <>
                   <div className="my-2 border-b border-white/10" />
                   <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Overtime
                   </div>
-                  {wordsAfterTime.map((w, i) => (
+                  {filteredAfterTime.map((w, i) => (
                     <div key={`after-${i}`} className="flex justify-between py-1 text-sm text-slate-500">
                       <span>{w.word}</span>
                       <span>({w.score} pts)</span>
