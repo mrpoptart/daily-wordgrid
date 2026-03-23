@@ -16,6 +16,7 @@ import type { WordLengthCounts } from "@/lib/board/solver";
 import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
 import { ActionPanel } from "./minimal/ActionPanel";
 import { TimeUpModal } from "./minimal/TimeUpModal";
+import { RevealWordsModal } from "./minimal/RevealWordsModal";
 
 export type WordGridProps = {
   board: Board;
@@ -36,6 +37,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
   const [revealedWords, setRevealedWords] = useState<string[] | null>(null);
+  const [showRevealModal, setShowRevealModal] = useState(false);
 
   // Pause & timer state
   const [gameStarted, setGameStarted] = useState(false);
@@ -191,13 +193,14 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
     }
   }, [boardDate]);
 
-  // Handler to reveal all remaining words
-  const handleRevealWords = useCallback(async () => {
-    const confirmed = window.confirm(
-      "This will show all remaining words and prevent additional word finding for today. Are you sure?"
-    );
-    if (!confirmed) return;
+  // Handler to show reveal confirmation modal
+  const handleRevealWords = useCallback(() => {
+    setShowRevealModal(true);
+  }, []);
 
+  // Confirm reveal: fetch and display all words
+  const handleConfirmReveal = useCallback(async () => {
+    setShowRevealModal(false);
     try {
       const res = await fetch(`/api/board/words?date=${boardDate}`);
       const data = await res.json();
@@ -695,6 +698,12 @@ ${breakdown}`;
         onShare={handleShare}
         onKeepPlaying={handleKeepPlaying}
         isOpen={showTimeUpModal}
+      />
+
+      <RevealWordsModal
+        isOpen={showRevealModal}
+        onConfirm={handleConfirmReveal}
+        onCancel={() => setShowRevealModal(false)}
       />
     </div>
   );
