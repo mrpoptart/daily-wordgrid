@@ -35,6 +35,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   const [feedbacks, setFeedbacks] = useState<FeedbackState[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
+  const [revealedWords, setRevealedWords] = useState<string[] | null>(null);
 
   // Pause & timer state
   const [gameStarted, setGameStarted] = useState(false);
@@ -175,6 +176,41 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
           });
       }
     });
+  }, [boardDate]);
+
+  // Check if words were already revealed for this board date
+  useEffect(() => {
+    const key = `wordgrid-revealed-${boardDate}`;
+    const cached = localStorage.getItem(key);
+    if (cached) {
+      try {
+        setRevealedWords(JSON.parse(cached));
+      } catch {
+        // ignore invalid cache
+      }
+    }
+  }, [boardDate]);
+
+  // Handler to reveal all remaining words
+  const handleRevealWords = useCallback(async () => {
+    const confirmed = window.confirm(
+      "This will show all remaining words and prevent additional word finding for today. Are you sure?"
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/board/words?date=${boardDate}`);
+      const data = await res.json();
+      if (data.status === "ok" && Array.isArray(data.words)) {
+        setRevealedWords(data.words);
+        localStorage.setItem(
+          `wordgrid-revealed-${boardDate}`,
+          JSON.stringify(data.words)
+        );
+      }
+    } catch (err) {
+      console.error("Failed to fetch board words:", err);
+    }
   }, [boardDate]);
 
   // Cleanup function for feedback timeouts on unmount
@@ -379,7 +415,7 @@ ${breakdown}`;
 
   async function handleSubmit(e?: React.FormEvent, explicitWord?: string, explicitPath?: {row: number, col: number}[]) {
     if (e) e.preventDefault();
-    if (!gameStarted || isPaused) return;
+    if (!gameStarted || isPaused || revealedWords) return;
 
     const trimmed = (explicitWord || input).trim();
     if (!trimmed) return;
@@ -500,6 +536,7 @@ ${breakdown}`;
   };
 
   const handleInteraction = (row: number, col: number, type: InteractionType) => {
+    if (revealedWords) return;
     if (type === 'start') {
         const letter = board[row][col];
         setDragPath([{ row, col }]);
@@ -647,6 +684,8 @@ ${breakdown}`;
           onLogout={handleLogout}
           isPaused={isPaused}
           onPause={handlePauseToggle}
+          revealedWords={revealedWords}
+          onRevealWords={handleRevealWords}
         />
       </div>
 
