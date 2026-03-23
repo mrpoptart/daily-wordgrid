@@ -22,16 +22,22 @@ const BUCKET_COLORS: Record<string, string> = {
 interface WordLengthDistributionProps {
   totalCounts: WordLengthCounts;
   foundCounts: WordLengthCounts;
+  selectedBuckets?: Set<string>;
+  onToggleBucket?: (bucket: string) => void;
 }
 
 function RingProgress({
   bucket,
   total,
   found,
+  isSelected,
+  onToggle,
 }: {
   bucket: string;
   total: number;
   found: number;
+  isSelected?: boolean;
+  onToggle?: () => void;
 }) {
   const remaining = Math.max(0, total - found);
   const progress = total > 0 ? found / total : 0;
@@ -40,13 +46,31 @@ function RingProgress({
   const isComplete = total > 0 && remaining === 0;
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex flex-col items-center gap-1 transition-all duration-200 ${
+        onToggle ? "cursor-pointer" : ""
+      } ${isSelected ? "scale-110" : "hover:scale-105"}`}
+    >
       <div className="relative" style={{ width: RING_SIZE, height: RING_SIZE }}>
         <svg
           width={RING_SIZE}
           height={RING_SIZE}
           viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
         >
+          {/* Selected highlight ring */}
+          {isSelected && (
+            <circle
+              cx={RING_SIZE / 2}
+              cy={RING_SIZE / 2}
+              r={RADIUS}
+              fill="none"
+              stroke={color}
+              strokeWidth={STROKE_WIDTH + 2}
+              opacity={0.25}
+            />
+          )}
           {/* Background track */}
           <circle
             cx={RING_SIZE / 2}
@@ -86,14 +110,16 @@ function RingProgress({
           </span>
         </div>
       </div>
-      <span className="text-[11px] font-medium text-slate-500">{bucket}</span>
-    </div>
+      <span className={`text-[11px] font-medium ${isSelected ? "text-slate-100" : "text-slate-500"}`}>{bucket}</span>
+    </button>
   );
 }
 
 export function WordLengthDistribution({
   totalCounts,
   foundCounts,
+  selectedBuckets,
+  onToggleBucket,
 }: WordLengthDistributionProps) {
   return (
     <div className="flex w-full items-center justify-center gap-3 sm:gap-4">
@@ -107,6 +133,8 @@ export function WordLengthDistribution({
             bucket={bucket}
             total={total}
             found={found}
+            isSelected={selectedBuckets?.has(bucket)}
+            onToggle={onToggleBucket ? () => onToggleBucket(bucket) : undefined}
           />
         );
       })}
