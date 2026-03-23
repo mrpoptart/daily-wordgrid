@@ -25,6 +25,8 @@ interface ActionPanelProps {
   onLogout: () => void;
   isPaused?: boolean;
   onPause?: () => void;
+  revealedWords?: string[] | null;
+  onRevealWords?: () => void;
 }
 
 export function ActionPanel({
@@ -44,9 +46,11 @@ export function ActionPanel({
   userEmail,
   onLogout,
   isPaused = false,
-  onPause
+  onPause,
+  revealedWords,
+  onRevealWords
 }: ActionPanelProps) {
-  const inputDisabled = isPaused || !gameStarted;
+  const inputDisabled = isPaused || !gameStarted || !!revealedWords;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 md:p-0">
@@ -131,7 +135,12 @@ export function ActionPanel({
 
       <WordLengthDistribution totalCounts={wordLengthCounts} foundCounts={foundLengthCounts} />
 
-      <FoundWords wordsWithinTime={wordsWithinTime} wordsAfterTime={wordsAfterTime} />
+      <FoundWords
+        wordsWithinTime={wordsWithinTime}
+        wordsAfterTime={wordsAfterTime}
+        revealedWords={revealedWords}
+        onRevealWords={onRevealWords}
+      />
 
       {userEmail && (
         <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded border border-white/10 bg-slate-900/50 p-4 text-sm sm:flex-row">

@@ -16,6 +16,7 @@ import type { WordLengthCounts } from "@/lib/board/solver";
 import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
 import { ActionPanel } from "./minimal/ActionPanel";
 import { TimeUpModal } from "./minimal/TimeUpModal";
+import { RevealWordsModal } from "./minimal/RevealWordsModal";
 
 export type WordGridProps = {
   board: Board;
@@ -35,6 +36,8 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   const [feedbacks, setFeedbacks] = useState<FeedbackState[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
+  const [revealedWords, setRevealedWords] = useState<string[] | null>(null);
+  const [showRevealModal, setShowRevealModal] = useState(false);
 
   // Pause & timer state
   const [gameStarted, setGameStarted] = useState(false);
@@ -175,6 +178,49 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
           });
       }
     });
+  }, [boardDate]);
+
+  // Check if words were already revealed for this board date
+  useEffect(() => {
+    const key = `wordgrid-revealed-${boardDate}`;
+    const cached = localStorage.getItem(key);
+    if (cached) {
+      try {
+        setRevealedWords(JSON.parse(cached));
+      } catch {
+        // ignore invalid cache
+      }
+    }
+  }, [boardDate]);
+
+  // Handler to show reveal confirmation modal
+  const handleRevealWords = useCallback(() => {
+    setShowRevealModal(true);
+  }, []);
+
+  // Confirm reveal: fetch and display all words
+  const handleConfirmReveal = useCallback(async () => {
+    setShowRevealModal(false);
+    try {
+      const res = await fetch(`/api/board/words?date=${boardDate}`);
+      if (!res.ok) {
+        toast.error("Failed to load words");
+        return;
+      }
+      const data = await res.json();
+      if (data.status === "ok" && Array.isArray(data.words)) {
+        setRevealedWords(data.words);
+        localStorage.setItem(
+          `wordgrid-revealed-${boardDate}`,
+          JSON.stringify(data.words)
+        );
+      } else {
+        toast.error("Failed to load words");
+      }
+    } catch (err) {
+      console.error("Failed to fetch board words:", err);
+      toast.error("Failed to load words");
+    }
   }, [boardDate]);
 
   // Cleanup function for feedback timeouts on unmount
@@ -379,7 +425,7 @@ ${breakdown}`;
 
   async function handleSubmit(e?: React.FormEvent, explicitWord?: string, explicitPath?: {row: number, col: number}[]) {
     if (e) e.preventDefault();
-    if (!gameStarted || isPaused) return;
+    if (!gameStarted || isPaused || revealedWords) return;
 
     const trimmed = (explicitWord || input).trim();
     if (!trimmed) return;
@@ -500,6 +546,7 @@ ${breakdown}`;
   };
 
   const handleInteraction = (row: number, col: number, type: InteractionType) => {
+    if (revealedWords) return;
     if (type === 'start') {
         const letter = board[row][col];
         setDragPath([{ row, col }]);
@@ -647,6 +694,8 @@ ${breakdown}`;
           onLogout={handleLogout}
           isPaused={isPaused}
           onPause={handlePauseToggle}
+          revealedWords={revealedWords}
+          onRevealWords={handleRevealWords}
         />
       </div>
 
@@ -656,6 +705,12 @@ ${breakdown}`;
         onShare={handleShare}
         onKeepPlaying={handleKeepPlaying}
         isOpen={showTimeUpModal}
+      />
+
+      <RevealWordsModal
+        isOpen={showRevealModal}
+        onConfirm={handleConfirmReveal}
+        onCancel={() => setShowRevealModal(false)}
       />
     </div>
   );
