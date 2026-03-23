@@ -612,6 +612,18 @@ ${breakdown}`;
       <div className="flex justify-center lg:justify-start">
         <div className="w-full sm:max-w-[360px] md:max-w-[420px] lg:max-w-[500px]">
           {renderBoardArea()}
+          {/* Time remaining bar */}
+          {gameStarted && (
+            <div className="mt-2 h-1 w-full rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-linear"
+                style={{
+                  width: `${(timeRemaining / TIME_LIMIT_SECONDS) * 100}%`,
+                  transformOrigin: 'right',
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
