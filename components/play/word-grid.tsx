@@ -203,6 +203,10 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
     setShowRevealModal(false);
     try {
       const res = await fetch(`/api/board/words?date=${boardDate}`);
+      if (!res.ok) {
+        toast.error("Failed to load words");
+        return;
+      }
       const data = await res.json();
       if (data.status === "ok" && Array.isArray(data.words)) {
         setRevealedWords(data.words);
@@ -210,9 +214,12 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
           `wordgrid-revealed-${boardDate}`,
           JSON.stringify(data.words)
         );
+      } else {
+        toast.error("Failed to load words");
       }
     } catch (err) {
       console.error("Failed to fetch board words:", err);
+      toast.error("Failed to load words");
     }
   }, [boardDate]);
 
