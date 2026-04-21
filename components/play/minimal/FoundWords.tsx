@@ -3,24 +3,32 @@
 import { useMemo, useRef } from "react";
 import { WordList } from "./WordList";
 import { scoreWordLength } from "@/lib/scoring";
+import {
+  formatSegmentTime,
+  type Segment,
+  type SegmentWord,
+} from "@/lib/segments";
 
 interface FoundWordsProps {
-  wordsWithinTime: { word: string; score: number }[];
-  wordsAfterTime: { word: string; score: number }[];
+  segments: Segment<SegmentWord>[];
   revealedWords?: string[] | null;
   onRevealWords?: () => void;
 }
 
-export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onRevealWords }: FoundWordsProps) {
+export function FoundWords({ segments, revealedWords, onRevealWords }: FoundWordsProps) {
   const listRef = useRef<HTMLDivElement>(null);
+
+  const allFoundWords = useMemo(
+    () => segments.flatMap(s => s.words),
+    [segments]
+  );
 
   // Build the combined word list when revealed
   const allWordsDisplay = useMemo(() => {
     if (!revealedWords) return null;
 
     const foundSet = new Set<string>();
-    wordsWithinTime.forEach(w => foundSet.add(w.word.toUpperCase()));
-    wordsAfterTime.forEach(w => foundSet.add(w.word.toUpperCase()));
+    allFoundWords.forEach(w => foundSet.add(w.word.toUpperCase()));
 
     return revealedWords
       .map(word => ({
@@ -29,7 +37,10 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onR
         found: foundSet.has(word.toUpperCase()),
       }))
       .sort((a, b) => a.word.localeCompare(b.word));
-  }, [revealedWords, wordsWithinTime, wordsAfterTime]);
+  }, [revealedWords, allFoundWords]);
+
+  const nonEmptySegments = segments.filter(s => s.words.length > 0);
+  const showSegmentHeaders = segments.length > 1;
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,27 +71,23 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onR
                 {allWordsDisplay.filter(w => w.found).length} / {allWordsDisplay.length} words found
               </div>
             </>
-          ) : wordsWithinTime.length === 0 && wordsAfterTime.length === 0 ? (
+          ) : allFoundWords.length === 0 ? (
             <p className="text-sm italic text-slate-500">No words found yet</p>
+          ) : showSegmentHeaders ? (
+            nonEmptySegments.map((seg, idx) => (
+              <div key={`seg-${seg.index}`}>
+                {idx > 0 && <div className="my-2 border-b border-white/10" />}
+                <div className="mb-1 flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span>
+                    {formatSegmentTime(seg.startSec)}–{formatSegmentTime(seg.endSec)}
+                  </span>
+                  <span>{seg.score} pts</span>
+                </div>
+                <WordList words={seg.words} emptyMessage="" />
+              </div>
+            ))
           ) : (
-            <>
-              <WordList words={wordsWithinTime} emptyMessage="" />
-
-              {wordsAfterTime.length > 0 && (
-                <>
-                  <div className="my-2 border-b border-white/10" />
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Overtime
-                  </div>
-                  {wordsAfterTime.map((w, i) => (
-                    <div key={`after-${i}`} className="flex justify-between py-1 text-sm text-slate-500">
-                      <span>{w.word}</span>
-                      <span>({w.score} pts)</span>
-                    </div>
-                  ))}
-                </>
-              )}
-            </>
+            <WordList words={allFoundWords} emptyMessage="" />
           )}
         </div>
 
