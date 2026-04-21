@@ -9,18 +9,44 @@ import {
   type SegmentWord,
 } from "@/lib/segments";
 
+function wordLengthBucket(word: string): string {
+  const len = word.length;
+  if (len <= 7) return String(len);
+  return "8+";
+}
+
 interface FoundWordsProps {
   segments: Segment<SegmentWord>[];
   revealedWords?: string[] | null;
   onRevealWords?: () => void;
+  selectedLengthBuckets?: Set<string>;
 }
 
-export function FoundWords({ segments, revealedWords, onRevealWords }: FoundWordsProps) {
+export function FoundWords({ segments, revealedWords, onRevealWords, selectedLengthBuckets }: FoundWordsProps) {
   const listRef = useRef<HTMLDivElement>(null);
+
+  const hasFilter = !!selectedLengthBuckets && selectedLengthBuckets.size > 0;
 
   const allFoundWords = useMemo(
     () => segments.flatMap(s => s.words),
     [segments]
+  );
+
+  const filteredSegments = useMemo(() => {
+    if (!hasFilter) return segments;
+    return segments.map(s => {
+      const words = s.words.filter(w => selectedLengthBuckets!.has(wordLengthBucket(w.word)));
+      return {
+        ...s,
+        words,
+        score: words.reduce((sum, w) => sum + w.score, 0),
+      };
+    });
+  }, [segments, hasFilter, selectedLengthBuckets]);
+
+  const filteredAllFoundWords = useMemo(
+    () => filteredSegments.flatMap(s => s.words),
+    [filteredSegments]
   );
 
   // Build the combined word list when revealed
@@ -39,7 +65,13 @@ export function FoundWords({ segments, revealedWords, onRevealWords }: FoundWord
       .sort((a, b) => a.word.localeCompare(b.word));
   }, [revealedWords, allFoundWords]);
 
-  const nonEmptySegments = segments.filter(s => s.words.length > 0);
+  const filteredAllWordsDisplay = useMemo(() => {
+    if (!allWordsDisplay) return null;
+    if (!hasFilter) return allWordsDisplay;
+    return allWordsDisplay.filter(w => selectedLengthBuckets!.has(wordLengthBucket(w.word)));
+  }, [allWordsDisplay, hasFilter, selectedLengthBuckets]);
+
+  const nonEmptySegments = filteredSegments.filter(s => s.words.length > 0);
   const showSegmentHeaders = segments.length > 1;
 
   return (
@@ -52,9 +84,9 @@ export function FoundWords({ segments, revealedWords, onRevealWords }: FoundWord
           ref={listRef}
           className="flex max-h-[300px] flex-col overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-700"
         >
-          {revealedWords && allWordsDisplay ? (
+          {revealedWords && filteredAllWordsDisplay ? (
             <>
-              {allWordsDisplay.map((w, i) => (
+              {filteredAllWordsDisplay.map((w, i) => (
                 <div
                   key={`revealed-${i}`}
                   className={`flex justify-between py-1 text-sm ${
@@ -68,11 +100,13 @@ export function FoundWords({ segments, revealedWords, onRevealWords }: FoundWord
                 </div>
               ))}
               <div className="mt-2 text-xs text-slate-500">
-                {allWordsDisplay.filter(w => w.found).length} / {allWordsDisplay.length} words found
+                {filteredAllWordsDisplay.filter(w => w.found).length} / {filteredAllWordsDisplay.length} words found
               </div>
             </>
-          ) : allFoundWords.length === 0 ? (
-            <p className="text-sm italic text-slate-500">No words found yet</p>
+          ) : filteredAllFoundWords.length === 0 ? (
+            <p className="text-sm italic text-slate-500">
+              {hasFilter ? "No words of this length" : "No words found yet"}
+            </p>
           ) : showSegmentHeaders ? (
             nonEmptySegments.map((seg, idx) => (
               <div key={`seg-${seg.index}`}>
@@ -87,7 +121,7 @@ export function FoundWords({ segments, revealedWords, onRevealWords }: FoundWord
               </div>
             ))
           ) : (
-            <WordList words={allFoundWords} emptyMessage="" />
+            <WordList words={filteredAllFoundWords} emptyMessage="" />
           )}
         </div>
 
