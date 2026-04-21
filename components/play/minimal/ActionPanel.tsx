@@ -7,17 +7,22 @@ import { WordLengthDistribution } from "./WordLengthDistribution";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { WordLengthCounts } from "@/lib/board/solver";
+import {
+  formatSegmentTime,
+  type Segment,
+  type SegmentWord,
+} from "@/lib/segments";
 
 interface ActionPanelProps {
   input: string;
   onInputChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
-  scoreWithinTime: number;
-  scoreAfterTime: number;
+  totalScore: number;
   timeRemaining: number;
+  timeLimit: number;
+  segments: Segment<SegmentWord>[];
+  currentSegmentIndex: number;
   gameStarted: boolean;
-  wordsWithinTime: { word: string; score: number }[];
-  wordsAfterTime: { word: string; score: number }[];
   wordLengthCounts: WordLengthCounts;
   foundLengthCounts: WordLengthCounts;
   inputRef?: React.RefObject<HTMLInputElement | null>;
@@ -34,12 +39,12 @@ export function ActionPanel({
   input,
   onInputChange,
   onSubmit,
-  scoreWithinTime,
-  scoreAfterTime,
+  totalScore,
   timeRemaining,
+  timeLimit,
+  segments,
+  currentSegmentIndex,
   gameStarted,
-  wordsWithinTime,
-  wordsAfterTime,
   wordLengthCounts,
   foundLengthCounts,
   inputRef,
@@ -67,6 +72,9 @@ export function ActionPanel({
     });
   }, []);
 
+  const segmentBreakdown = segments.filter(s => s.words.length > 0);
+  const showSegmentLine = segments.length > 1;
+
   return (
     <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 md:p-0">
       <div className="flex flex-col gap-2">
@@ -93,9 +101,11 @@ export function ActionPanel({
 
       <div className="flex items-center justify-between border-y border-white/10 py-4">
         <div className="flex-1 text-left text-sm text-slate-100">
-          <span className="font-semibold text-emerald-300">Score:</span> {scoreWithinTime} pts
-          {scoreAfterTime > 0 && (
-             <span className="ml-1 text-slate-500">(+{scoreAfterTime})</span>
+          <span className="font-semibold text-emerald-300">Score:</span> {totalScore} pts
+          {showSegmentLine && (
+            <span className="ml-1 text-slate-500">
+              / {formatSegmentTime(timeLimit)}
+            </span>
           )}
         </div>
         <div className="flex flex-1 justify-center items-center gap-2 text-sm text-slate-100">
@@ -148,6 +158,19 @@ export function ActionPanel({
         </div>
       </div>
 
+      {showSegmentLine && segmentBreakdown.length > 0 && (
+        <div className="-mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400">
+          {segmentBreakdown.map(s => (
+            <span
+              key={s.index}
+              className={s.index === currentSegmentIndex ? "text-emerald-300" : ""}
+            >
+              {formatSegmentTime(s.endSec)} · {s.score} pts
+            </span>
+          ))}
+        </div>
+      )}
+
       <WordLengthDistribution
         totalCounts={wordLengthCounts}
         foundCounts={foundLengthCounts}
@@ -156,8 +179,7 @@ export function ActionPanel({
       />
 
       <FoundWords
-        wordsWithinTime={wordsWithinTime}
-        wordsAfterTime={wordsAfterTime}
+        segments={segments}
         revealedWords={revealedWords}
         onRevealWords={onRevealWords}
         selectedLengthBuckets={selectedLengthBuckets}

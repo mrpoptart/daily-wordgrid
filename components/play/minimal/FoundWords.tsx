@@ -3,6 +3,11 @@
 import { useMemo, useRef } from "react";
 import { WordList } from "./WordList";
 import { scoreWordLength } from "@/lib/scoring";
+import {
+  formatSegmentTime,
+  type Segment,
+  type SegmentWord,
+} from "@/lib/segments";
 
 function wordLengthBucket(word: string): string {
   const len = word.length;
@@ -11,25 +16,37 @@ function wordLengthBucket(word: string): string {
 }
 
 interface FoundWordsProps {
-  wordsWithinTime: { word: string; score: number }[];
-  wordsAfterTime: { word: string; score: number }[];
+  segments: Segment<SegmentWord>[];
   revealedWords?: string[] | null;
   onRevealWords?: () => void;
   selectedLengthBuckets?: Set<string>;
 }
 
-export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onRevealWords, selectedLengthBuckets }: FoundWordsProps) {
+export function FoundWords({ segments, revealedWords, onRevealWords, selectedLengthBuckets }: FoundWordsProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
-  const hasFilter = selectedLengthBuckets && selectedLengthBuckets.size > 0;
+  const hasFilter = !!selectedLengthBuckets && selectedLengthBuckets.size > 0;
 
-  const filteredWithinTime = useMemo(
-    () => hasFilter ? wordsWithinTime.filter(w => selectedLengthBuckets.has(wordLengthBucket(w.word))) : wordsWithinTime,
-    [wordsWithinTime, hasFilter, selectedLengthBuckets]
+  const allFoundWords = useMemo(
+    () => segments.flatMap(s => s.words),
+    [segments]
   );
-  const filteredAfterTime = useMemo(
-    () => hasFilter ? wordsAfterTime.filter(w => selectedLengthBuckets.has(wordLengthBucket(w.word))) : wordsAfterTime,
-    [wordsAfterTime, hasFilter, selectedLengthBuckets]
+
+  const filteredSegments = useMemo(() => {
+    if (!hasFilter) return segments;
+    return segments.map(s => {
+      const words = s.words.filter(w => selectedLengthBuckets!.has(wordLengthBucket(w.word)));
+      return {
+        ...s,
+        words,
+        score: words.reduce((sum, w) => sum + w.score, 0),
+      };
+    });
+  }, [segments, hasFilter, selectedLengthBuckets]);
+
+  const filteredAllFoundWords = useMemo(
+    () => filteredSegments.flatMap(s => s.words),
+    [filteredSegments]
   );
 
   // Build the combined word list when revealed
@@ -37,8 +54,7 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onR
     if (!revealedWords) return null;
 
     const foundSet = new Set<string>();
-    wordsWithinTime.forEach(w => foundSet.add(w.word.toUpperCase()));
-    wordsAfterTime.forEach(w => foundSet.add(w.word.toUpperCase()));
+    allFoundWords.forEach(w => foundSet.add(w.word.toUpperCase()));
 
     return revealedWords
       .map(word => ({
@@ -47,13 +63,16 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onR
         found: foundSet.has(word.toUpperCase()),
       }))
       .sort((a, b) => a.word.localeCompare(b.word));
-  }, [revealedWords, wordsWithinTime, wordsAfterTime]);
+  }, [revealedWords, allFoundWords]);
 
   const filteredAllWordsDisplay = useMemo(() => {
     if (!allWordsDisplay) return null;
     if (!hasFilter) return allWordsDisplay;
     return allWordsDisplay.filter(w => selectedLengthBuckets!.has(wordLengthBucket(w.word)));
   }, [allWordsDisplay, hasFilter, selectedLengthBuckets]);
+
+  const nonEmptySegments = filteredSegments.filter(s => s.words.length > 0);
+  const showSegmentHeaders = segments.length > 1;
 
   return (
     <div className="flex flex-col gap-4">
@@ -84,29 +103,25 @@ export function FoundWords({ wordsWithinTime, wordsAfterTime, revealedWords, onR
                 {filteredAllWordsDisplay.filter(w => w.found).length} / {filteredAllWordsDisplay.length} words found
               </div>
             </>
-          ) : filteredWithinTime.length === 0 && filteredAfterTime.length === 0 ? (
+          ) : filteredAllFoundWords.length === 0 ? (
             <p className="text-sm italic text-slate-500">
               {hasFilter ? "No words of this length" : "No words found yet"}
             </p>
+          ) : showSegmentHeaders ? (
+            nonEmptySegments.map((seg, idx) => (
+              <div key={`seg-${seg.index}`}>
+                {idx > 0 && <div className="my-2 border-b border-white/10" />}
+                <div className="mb-1 flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span>
+                    {formatSegmentTime(seg.startSec)}–{formatSegmentTime(seg.endSec)}
+                  </span>
+                  <span>{seg.score} pts</span>
+                </div>
+                <WordList words={seg.words} emptyMessage="" />
+              </div>
+            ))
           ) : (
-            <>
-              <WordList words={filteredWithinTime} emptyMessage="" />
-
-              {filteredAfterTime.length > 0 && (
-                <>
-                  <div className="my-2 border-b border-white/10" />
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Overtime
-                  </div>
-                  {filteredAfterTime.map((w, i) => (
-                    <div key={`after-${i}`} className="flex justify-between py-1 text-sm text-slate-500">
-                      <span>{w.word}</span>
-                      <span>({w.score} pts)</span>
-                    </div>
-                  ))}
-                </>
-              )}
-            </>
+            <WordList words={filteredAllFoundWords} emptyMessage="" />
           )}
         </div>
 
