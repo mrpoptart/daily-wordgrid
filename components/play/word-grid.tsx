@@ -12,6 +12,13 @@ import {
 import { scoreWordLength } from "@/lib/scoring";
 import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
 import type { WordLengthCounts } from "@/lib/board/solver";
+import {
+  SEGMENT_SECONDS,
+  DEFAULT_TIME_LIMIT_SECONDS,
+  buildSegments,
+  formatSegmentTime,
+  segmentBreakdownLines,
+} from "@/lib/segments";
 
 import { BoardComponent, InteractionType, FeedbackState, FeedbackType } from "./minimal/Board";
 import { ActionPanel } from "./minimal/ActionPanel";
@@ -25,8 +32,6 @@ export type WordGridProps = {
 };
 
 type AddedWord = { word: string; score: number; timestamp?: string; elapsedAt?: number };
-
-const TIME_LIMIT_SECONDS = 300; // 5 minutes
 
 export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) {
   const [words, setWords] = useState<AddedWord[]>([]);
@@ -42,11 +47,13 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   // Pause & timer state
   const [gameStarted, setGameStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(TIME_LIMIT_SECONDS);
+  const [timeLimit, setTimeLimit] = useState(DEFAULT_TIME_LIMIT_SECONDS);
+  const [timeRemaining, setTimeRemaining] = useState(DEFAULT_TIME_LIMIT_SECONDS);
 
   // Refs for timer logic (avoid stale closures in interval)
   const elapsedBaseRef = useRef(0);       // accumulated elapsed seconds from DB / previous play sessions
   const playResumedAtRef = useRef<number | null>(null); // Date.now() when current play session started
+  const timeLimitRef = useRef(DEFAULT_TIME_LIMIT_SECONDS);
   const userIdRef = useRef<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +78,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   const getCurrentElapsed = useCallback(() => {
     if (playResumedAtRef.current !== null) {
       const deltaS = (Date.now() - playResumedAtRef.current) / 1000;
-      return Math.min(TIME_LIMIT_SECONDS, elapsedBaseRef.current + deltaS);
+      return Math.min(timeLimitRef.current, elapsedBaseRef.current + deltaS);
     }
     return elapsedBaseRef.current;
   }, []);
@@ -121,7 +128,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
           .from("daily_boards")
           .select("board_date")
           .eq("user_id", data.user.id)
-          .gte("elapsed_seconds", TIME_LIMIT_SECONDS)
+          .gte("elapsed_seconds", DEFAULT_TIME_LIMIT_SECONDS)
           .order("board_date", { ascending: false })
           .then(({ data: completedDays }) => {
             if (!completedDays?.length) return;
@@ -153,25 +160,28 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
             setStreak(count);
           });
 
-        // Fetch board state (elapsed_seconds)
+        // Fetch board state (elapsed_seconds + time_limit_seconds)
         supabase
           .from("daily_boards")
-          .select("board_started, elapsed_seconds")
+          .select("board_started, elapsed_seconds, time_limit_seconds")
           .eq("user_id", data.user.id)
           .eq("board_date", boardDate)
           .single()
           .then(({ data: boardData }) => {
             if (boardData?.board_started) {
               const elapsed = boardData.elapsed_seconds ?? 0;
+              const limit = boardData.time_limit_seconds ?? DEFAULT_TIME_LIMIT_SECONDS;
               elapsedBaseRef.current = elapsed;
+              timeLimitRef.current = limit;
+              setTimeLimit(limit);
               setGameStarted(true);
 
-              if (elapsed >= TIME_LIMIT_SECONDS) {
+              if (elapsed >= limit) {
                 setTimeRemaining(0);
-                setIsPaused(false);
+                setIsPaused(true);
               } else {
                 // Always load as paused — user clicks Resume to continue
-                setTimeRemaining(TIME_LIMIT_SECONDS - elapsed);
+                setTimeRemaining(limit - elapsed);
                 setIsPaused(true);
               }
             }
@@ -241,38 +251,38 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
     playResumedAtRef.current = Date.now();
 
     // Immediate display update
-    setTimeRemaining(Math.max(0, TIME_LIMIT_SECONDS - Math.floor(elapsedBaseRef.current)));
+    setTimeRemaining(
+      Math.max(0, timeLimitRef.current - Math.floor(elapsedBaseRef.current))
+    );
 
     const interval = setInterval(() => {
+      const limit = timeLimitRef.current;
       const deltaS = (Date.now() - playResumedAtRef.current!) / 1000;
       const currentElapsed = elapsedBaseRef.current + deltaS;
-      const remaining = Math.max(0, TIME_LIMIT_SECONDS - Math.floor(currentElapsed));
+      const remaining = Math.max(0, limit - Math.floor(currentElapsed));
 
       setTimeRemaining(remaining);
-      syncElapsedToDb(Math.floor(currentElapsed));
+      syncElapsedToDb(Math.floor(Math.min(limit, currentElapsed)));
 
       if (remaining <= 0) {
-        elapsedBaseRef.current = TIME_LIMIT_SECONDS;
-        syncElapsedToDb(TIME_LIMIT_SECONDS);
-        if (typeof window !== 'undefined') {
-          const key = `wordgrid-time-up-seen-${boardDate}`;
-          if (!localStorage.getItem(key)) {
-            setShowTimeUpModal(true);
-          }
-        }
+        elapsedBaseRef.current = limit;
+        playResumedAtRef.current = null;
+        syncElapsedToDb(limit);
+        setIsPaused(true);
+        setShowTimeUpModal(true);
         clearInterval(interval);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameStarted, isPaused, boardDate, syncElapsedToDb]);
+  }, [gameStarted, isPaused, syncElapsedToDb]);
 
   // Sync elapsed time when page is being hidden (tab switch, close, refresh)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && playResumedAtRef.current !== null) {
         const deltaS = (Date.now() - playResumedAtRef.current) / 1000;
-        const currentElapsed = Math.min(TIME_LIMIT_SECONDS, elapsedBaseRef.current + deltaS);
+        const currentElapsed = Math.min(timeLimitRef.current, elapsedBaseRef.current + deltaS);
         syncElapsedToDb(Math.floor(currentElapsed));
       }
     };
@@ -280,39 +290,33 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [syncElapsedToDb]);
 
-  // Categorize words using elapsed_at (play-time based, not wall-clock)
-  const { wordsWithinTime, wordsAfterTime, scoreWithinTime, scoreAfterTime, foundLengthCounts } = useMemo(() => {
-    const within: AddedWord[] = [];
-    const after: AddedWord[] = [];
-    let sWithin = 0;
-    let sAfter = 0;
+  // Bucket words into 5-minute segments based on elapsed_at.
+  const segments = useMemo(
+    () => buildSegments(words, timeLimit),
+    [words, timeLimit]
+  );
+
+  const { totalScore, foundLengthCounts } = useMemo(() => {
     const foundCounts: WordLengthCounts = { "4": 0, "5": 0, "6": 0, "7": 0, "8+": 0 };
-
+    let total = 0;
     words.forEach(w => {
-      const isOvertime = w.elapsedAt != null && w.elapsedAt >= TIME_LIMIT_SECONDS;
-
-      if (isOvertime) {
-        after.push(w);
-        sAfter += w.score;
-      } else {
-        within.push(w);
-        sWithin += w.score;
-      }
-
-      // Count by length bucket (all words, including overtime)
+      total += w.score;
       const len = w.word.length;
       if (len >= 8) foundCounts["8+"]++;
       else if (len >= 4) foundCounts[String(len)]++;
     });
-
-    return {
-      wordsWithinTime: within.sort((a, b) => a.word.localeCompare(b.word)),
-      wordsAfterTime: after.sort((a, b) => a.word.localeCompare(b.word)),
-      scoreWithinTime: sWithin,
-      scoreAfterTime: sAfter,
-      foundLengthCounts: foundCounts,
-    };
+    return { totalScore: total, foundLengthCounts: foundCounts };
   }, [words]);
+
+  // Segments with alphabetically-sorted word lists for display.
+  const displaySegments = useMemo(
+    () =>
+      segments.map(s => ({
+        ...s,
+        words: [...s.words].sort((a, b) => a.word.localeCompare(b.word)),
+      })),
+    [segments]
+  );
 
   // Calculate highlighted cells based on input or drag
   const highlightedCells = useMemo(() => {
@@ -333,12 +337,20 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
     const now = new Date().toISOString();
     if (userIdRef.current) {
       await supabase.from("daily_boards").upsert(
-        { user_id: userIdRef.current, board_date: boardDate, board_started: now, elapsed_seconds: 0 },
+        {
+          user_id: userIdRef.current,
+          board_date: boardDate,
+          board_started: now,
+          elapsed_seconds: 0,
+          time_limit_seconds: DEFAULT_TIME_LIMIT_SECONDS,
+        },
         { onConflict: "user_id, board_date", ignoreDuplicates: true }
       );
     }
     elapsedBaseRef.current = 0;
-    setTimeRemaining(TIME_LIMIT_SECONDS);
+    timeLimitRef.current = DEFAULT_TIME_LIMIT_SECONDS;
+    setTimeLimit(DEFAULT_TIME_LIMIT_SECONDS);
+    setTimeRemaining(DEFAULT_TIME_LIMIT_SECONDS);
     setGameStarted(true);
     setIsPaused(false);
   }, [boardDate]);
@@ -353,7 +365,10 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
       // Pause: snapshot elapsed time and sync to DB
       if (playResumedAtRef.current !== null) {
         const deltaS = (Date.now() - playResumedAtRef.current) / 1000;
-        elapsedBaseRef.current = Math.min(TIME_LIMIT_SECONDS, elapsedBaseRef.current + deltaS);
+        elapsedBaseRef.current = Math.min(
+          timeLimitRef.current,
+          elapsedBaseRef.current + deltaS
+        );
         syncElapsedToDb(Math.floor(elapsedBaseRef.current));
         playResumedAtRef.current = null;
       }
@@ -361,18 +376,39 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
     }
   }, [isPaused, syncElapsedToDb]);
 
+  // Extend the session by one more 5-minute segment.
+  const handleExtendTime = useCallback(async () => {
+    const newLimit = timeLimitRef.current + SEGMENT_SECONDS;
+    timeLimitRef.current = newLimit;
+    setTimeLimit(newLimit);
+    setTimeRemaining(Math.max(0, newLimit - Math.floor(elapsedBaseRef.current)));
+    setShowTimeUpModal(false);
+
+    if (userIdRef.current) {
+      const { error } = await supabase
+        .from("daily_boards")
+        .update({ time_limit_seconds: newLimit })
+        .eq("user_id", userIdRef.current)
+        .eq("board_date", boardDate);
+      if (error) {
+        console.error("Failed to persist time extension:", error);
+      }
+    }
+
+    setIsPaused(false);
+    focusInput();
+  }, [boardDate, focusInput]);
+
   async function handleShare() {
-    // Generate breakdown by length
+    // Length breakdown across all found words
     const lengthCounts = new Map<number, number>();
-    wordsWithinTime.forEach(w => {
+    words.forEach(w => {
       const len = w.word.length;
       lengthCounts.set(len, (lengthCounts.get(len) || 0) + 1);
     });
-
-    // Sort lengths
     const sortedLengths = Array.from(lengthCounts.keys()).sort((a, b) => a - b);
 
-    let breakdown = "";
+    let lengthBreakdown = "";
     sortedLengths.forEach(len => {
         const count = lengthCounts.get(len);
         let emoji = "";
@@ -383,18 +419,26 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
         else if (len === 8) emoji = "8️⃣";
         else if (len === 9) emoji = "9️⃣";
         else if (len === 10) emoji = "🔟";
-        else emoji = `${len}`; // Fallback
+        else emoji = `${len}`;
 
         if (emoji) {
-            breakdown += `${emoji}: ${count} ${count === 1 ? 'word' : 'words'}\n`;
+            lengthBreakdown += `${emoji}: ${count} ${count === 1 ? 'word' : 'words'}\n`;
         }
     });
 
-    const text = `I got ${scoreWithinTime} points on Daily Word Grid today!
-${breakdown}`;
+    const timePlayed = formatSegmentTime(timeLimit);
+    const segmentLines = segmentBreakdownLines(segments);
+    const segmentText = segmentLines
+      .map(l => `• ${l.label} — ${l.score} pts (${l.wordCount} ${l.wordCount === 1 ? "word" : "words"})`)
+      .join("\n");
+
+    const header = `Daily Word Grid — ${totalScore} pts in ${timePlayed}`;
+    const body = segmentLines.length > 1
+      ? `${header}\n${segmentText}\n${lengthBreakdown}`
+      : `${header}\n${lengthBreakdown}`;
 
     const url = window.location.href;
-    const fullText = `${text}${url}`;
+    const fullText = `${body}${url}`;
 
     const shareData = {
       title: 'Daily Wordgrid',
@@ -413,14 +457,6 @@ ${breakdown}`;
     // Fallback to clipboard
     navigator.clipboard.writeText(fullText);
     toast.success("Score copied to clipboard!");
-  }
-
-  function handleKeepPlaying() {
-    setShowTimeUpModal(false);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`wordgrid-time-up-seen-${boardDate}`, 'true');
-    }
-    focusInput();
   }
 
   async function handleSubmit(e?: React.FormEvent, explicitWord?: string, explicitPath?: {row: number, col: number}[]) {
@@ -653,19 +689,29 @@ ${breakdown}`;
     );
   };
 
+  // Progress bar fills the current 5-minute segment so each extension feels fresh.
+  const elapsedSeconds = timeLimit - timeRemaining;
+  const segmentProgressFraction = timeRemaining <= 0
+    ? 0
+    : Math.max(0, Math.min(1, (SEGMENT_SECONDS - (elapsedSeconds % SEGMENT_SECONDS)) / SEGMENT_SECONDS));
+  const currentSegmentIndex = Math.min(
+    segments.length - 1,
+    Math.floor(elapsedSeconds / SEGMENT_SECONDS)
+  );
+
   return (
     <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-[1fr_400px]">
       {/* Board Column */}
       <div className="flex justify-center lg:justify-start">
         <div className="w-full sm:max-w-[360px] md:max-w-[420px] lg:max-w-[500px]">
           {renderBoardArea()}
-          {/* Time remaining bar */}
+          {/* Time remaining bar — per segment */}
           {gameStarted && (
             <div className="mt-2 h-1 w-full rounded-full bg-white/10 overflow-hidden">
               <div
                 className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-linear"
                 style={{
-                  width: `${(timeRemaining / TIME_LIMIT_SECONDS) * 100}%`,
+                  width: `${segmentProgressFraction * 100}%`,
                   transformOrigin: 'right',
                 }}
               />
@@ -681,12 +727,12 @@ ${breakdown}`;
           input={input}
           onInputChange={setInput}
           onSubmit={handleSubmit}
-          scoreWithinTime={scoreWithinTime}
-          scoreAfterTime={scoreAfterTime}
+          totalScore={totalScore}
           timeRemaining={timeRemaining}
+          timeLimit={timeLimit}
+          segments={displaySegments}
+          currentSegmentIndex={currentSegmentIndex}
           gameStarted={gameStarted}
-          wordsWithinTime={wordsWithinTime}
-          wordsAfterTime={wordsAfterTime}
           wordLengthCounts={wordLengthCounts}
           foundLengthCounts={foundLengthCounts}
           onShare={handleShare}
@@ -700,10 +746,13 @@ ${breakdown}`;
       </div>
 
       <TimeUpModal
-        score={scoreWithinTime}
-        wordsFound={wordsWithinTime.length}
+        totalScore={totalScore}
+        wordsFound={words.length}
+        timeLimit={timeLimit}
+        segments={segments}
         onShare={handleShare}
-        onKeepPlaying={handleKeepPlaying}
+        onExtend={handleExtendTime}
+        onDismiss={() => setShowTimeUpModal(false)}
         isOpen={showTimeUpModal}
       />
 
