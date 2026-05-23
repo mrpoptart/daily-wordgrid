@@ -4,11 +4,11 @@ import { resolveBoardDate } from "@/lib/board/api-helpers";
 import { fetchBoard } from "@/lib/board/fetch";
 
 describe("resolveBoardDate", () => {
-  // Midnight ET is 5am UTC (assuming Standard Time, UTC-5).
-  // Let's use 5:00 AM UTC.
-  // ET: 00:00 (Next Day)
-  // PT (UTC-8): 21:00 (Previous Day)
-  const fixedNow = new Date(Date.UTC(2024, 4, 20, 5, 0, 0)); // May 20, 5am UTC -> May 20 00:00 ET
+  // Midnight PT is 7am UTC (assuming Daylight Saving Time, UTC-7).
+  // Let's use 7:00 AM UTC.
+  // PT: 00:00 (Next Day)
+  // ET (UTC-4): 03:00 (Next Day)
+  const fixedNow = new Date(Date.UTC(2024, 4, 20, 7, 0, 0)); // May 20, 7am UTC -> May 20 00:00 PT
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -20,21 +20,21 @@ describe("resolveBoardDate", () => {
   });
 
   it("returns the provided date string when valid", () => {
-    expect(resolveBoardDate("2024-05-10", "America/New_York")).toBe("2024-05-10");
+    expect(resolveBoardDate("2024-05-10", "America/Los_Angeles")).toBe("2024-05-10");
   });
 
-  it("ignores the requester time zone and uses ET", () => {
-    // PT would be May 19, but we expect May 20 (ET)
-    const date = resolveBoardDate(null, "America/Los_Angeles");
+  it("ignores the requester time zone and uses PT", () => {
+    // ET would still be May 20, and PT is May 20 at 7am UTC
+    const date = resolveBoardDate(null, "America/New_York");
     expect(date).toBe("2024-05-20");
   });
 
-  it("falls back to Eastern time when no time zone is provided", () => {
+  it("falls back to Pacific time when no time zone is provided", () => {
     const date = resolveBoardDate(null, null);
     expect(date).toBe("2024-05-20");
   });
 
-  it("falls back to Eastern time when the time zone is invalid", () => {
+  it("falls back to Pacific time when the time zone is invalid", () => {
     const date = resolveBoardDate(null, "Totally/Invalid");
     expect(date).toBe("2024-05-20");
   });
