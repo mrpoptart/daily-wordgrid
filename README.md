@@ -77,7 +77,9 @@ submissions (table)
 - `GET /api/leaderboard?date=YYYY-MM-DD` → top scores for the day
 
 ### Health Check
-- `GET /api/health` → returns `{ status: "ok", env: { hasSupabaseUrl, ... } }`.
+- `GET /api/health` → returns `{ status: "ok" | "degraded", env: { hasSupabaseUrl, supabaseHost, supabaseHealth, supabaseError, ... } }`.
+- `status` is `"degraded"` and `env.supabaseError` carries the underlying error whenever Supabase cannot be reached. An error containing `getaddrinfo ENOTFOUND <ref>.supabase.co` means the Supabase project is paused or deleted: restore it from the Supabase dashboard (or create a new project, run `npm run migrate`, and update the Vercel env vars).
+- `vercel.json` schedules a daily cron hit of this endpoint. The query it runs counts as project activity, which keeps a free-tier Supabase project from being auto-paused after 7 days without traffic.
 
 ## Local Development
 

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { describeAuthError } from "@/lib/auth-errors";
 
 const STATUS_MESSAGES = {
   idle: "",
@@ -49,7 +50,7 @@ export function UnifiedLogin({ redirectPath = "/play", className = "" }: Unified
 
       setState("success");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "We couldn't send the magic link. Try again in a moment.");
+      setError(describeAuthError(cause, "We couldn't send the magic link. Try again in a moment."));
       setState("error");
     }
   }
@@ -69,7 +70,7 @@ export function UnifiedLogin({ redirectPath = "/play", className = "" }: Unified
       if (error) throw error;
 
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "We couldn't start Google login. Please try again.");
+      setError(describeAuthError(cause, "We couldn't start Google login. Please try again."));
       setState("error");
     }
   }
