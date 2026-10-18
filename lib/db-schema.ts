@@ -9,8 +9,8 @@
  *   timestamptz         → Timestamp
  *
  * Composite primary keys / unique constraints become deterministic document
- * IDs, so a duplicate insert collides with an existing document (and is
- * rejected by firestore.rules, like a unique-constraint violation).
+ * IDs, so there is at most one document per key. Saving the same key again
+ * overwrites it; the game itself blocks duplicate words before saving.
  */
 
 export const COLLECTIONS = {

@@ -595,7 +595,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
     // Persist
     if (userIdRef.current) {
       try {
-        // Deterministic ID: a duplicate insert is rejected by firestore.rules
+        // Deterministic ID: one doc per user + date + word (duplicates are blocked above)
         await setDoc(doc(db, COLLECTIONS.words, wordDocId(userIdRef.current, boardDate, word)), {
           id: crypto.randomUUID(),
           user_id: userIdRef.current,
