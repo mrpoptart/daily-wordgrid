@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
-import { adminApp, adminDb } from '@/lib/firebase-admin';
-import { COLLECTIONS } from '@/lib/db-schema';
+import { firebaseConfig } from '@/lib/firebase-config';
 
 export const dynamic = 'force-dynamic';
 
 export type HealthResponse = {
   status: 'ok' | 'degraded';
   env: {
-    hasFirebaseCredentials: boolean;
     firebaseProjectId: string;
     firebaseHealth: boolean;
     firebaseError: string | null;
@@ -37,17 +35,22 @@ function describeError(error: unknown): string {
 }
 
 export async function GET() {
-  const hasFirebaseCredentials = Boolean(
-    process.env.FIREBASE_SERVICE_ACCOUNT?.trim() || process.env.FIRESTORE_EMULATOR_HOST?.trim()
-  );
-  const firebaseProjectId = adminApp.options.projectId ?? 'unknown';
+  const firebaseProjectId = firebaseConfig.projectId;
 
   let firebaseHealth = false;
   let firebaseError: string | null = null;
   try {
-    // Simple read to check connectivity and credentials.
-    await adminDb.collection(COLLECTIONS.games).limit(1).get();
-    firebaseHealth = true;
+    // Unauthenticated read of a path the security rules deny: a 403/404 still
+    // proves Firestore is reachable; network failures and 5xx do not.
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/_health/ping?key=${firebaseConfig.apiKey}`,
+      { cache: 'no-store' },
+    );
+    if (res.status < 500) {
+      firebaseHealth = true;
+    } else {
+      firebaseError = `Firestore responded ${res.status}`;
+    }
   } catch (e) {
     firebaseError = describeError(e);
   }
@@ -62,7 +65,6 @@ export async function GET() {
   const body: HealthResponse = {
     status: firebaseHealth ? 'ok' : 'degraded',
     env: {
-      hasFirebaseCredentials,
       firebaseProjectId,
       firebaseHealth,
       firebaseError,

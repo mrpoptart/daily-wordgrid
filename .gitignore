@@ -41,8 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# migration exports (contain user data)
-supabase-export*.json
 
 # firebase emulator logs
 *-debug.log

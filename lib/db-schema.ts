@@ -17,12 +17,9 @@ export const COLLECTIONS = {
   users: "users",
   words: "words",
   dailyBoards: "daily_boards",
-  games: "games",
-  boardWordCounts: "board_word_counts",
-  submissions: "submissions",
 } as const;
 
-/** users/{id} — id is the Firebase Auth uid (Supabase auth.users.id for migrated users). */
+/** users/{id} — id is the Firebase Auth uid. */
 export type UserDoc<TTimestamp = unknown> = {
   id: string;
   email: string | null;
@@ -51,44 +48,12 @@ export type DailyBoardDoc<TTimestamp = unknown> = {
   time_limit_seconds: number;
 };
 
-/** games/{date} — server-only. */
-export type GameDoc<TTimestamp = unknown> = {
-  date: string;
-  letters: string;
-  seed: string;
-  created_at: TTimestamp;
-};
-
-/** board_word_counts/{board_date} — server-written, publicly readable. */
-export type BoardWordCountsDoc<TTimestamp = unknown> = {
-  board_date: string;
-  total_words: number;
-  count_4: number;
-  count_5: number;
-  count_6: number;
-  count_7: number;
-  count_8_plus: number;
-  created_at: TTimestamp;
-};
-
-/** submissions/{user_id}_{date} — UNIQUE(user_id, date); server-only. */
-export type SubmissionDoc<TTimestamp = unknown> = {
-  id: string;
-  user_id: string;
-  date: string;
-  words: string; // JSON-encoded string[]
-  score: number;
-  created_at: TTimestamp;
-};
-
 export const wordDocId = (userId: string, boardDate: string, word: string) =>
   `${userId}_${boardDate}_${word}`;
 
 export const dailyBoardDocId = (userId: string, boardDate: string) => `${userId}_${boardDate}`;
 
-export const submissionDocId = (userId: string, date: string) => `${userId}_${date}`;
-
-/** Converts a Firestore Timestamp (client or admin SDK), Date or string into an ISO string. */
+/** Converts a Firestore Timestamp, Date or string into an ISO string. */
 export function timestampToIso(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;

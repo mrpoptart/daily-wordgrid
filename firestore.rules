@@ -1,7 +1,6 @@
 rules_version = '2';
 
 // Mirrors the former Supabase row-level-security policies.
-// The server (firebase-admin) bypasses these rules.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -56,11 +55,6 @@ service cloud.firestore {
         && request.resource.data.time_limit_seconds is int;
     }
 
-    // board_word_counts: public, read-only game data
-    match /board_word_counts/{boardDate} {
-      allow read: if true;
-    }
-
-    // games, submissions: server-only
+    // Everything else is denied.
   }
 }

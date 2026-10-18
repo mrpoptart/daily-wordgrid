@@ -15,9 +15,7 @@
     "prepare": "husky",
     "test:emulator": "firebase emulators:exec --only auth,firestore --project boggle-me \"vitest run tests/emulator\"",
     "emulators": "firebase emulators:start --only auth,firestore --project boggle-me",
-    "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes --project boggle-me",
-    "migrate:export": "node scripts/export-supabase.mjs",
-    "migrate:import": "node scripts/migrate-supabase-to-firebase.mjs"
+    "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes --project boggle-me"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
@@ -27,7 +25,6 @@
     "clsx": "^2.1.1",
     "daisyui": "^5.5.14",
     "firebase": "^13.0.0",
-    "firebase-admin": "^14.5.0",
     "jsdom": "^27.0.1",
     "next": "15.5.9",
     "pf-sowpods": "^1.2.1",

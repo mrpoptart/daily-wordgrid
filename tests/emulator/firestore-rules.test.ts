@@ -3,7 +3,13 @@
 // Runs against the Firebase emulators: `npm run test:emulator`.
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { deleteApp, initializeApp as initClientApp, type FirebaseApp } from "firebase/app";
-import { connectAuthEmulator, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  connectAuthEmulator,
+  createUserWithEmailAndPassword,
+  getAuth,
+  signOut,
+  type Auth,
+} from "firebase/auth";
 import {
   collection,
   connectFirestoreEmulator,
@@ -18,46 +24,42 @@ import {
   where,
   type Firestore,
 } from "firebase/firestore";
-import { getApps, initializeApp as initAdminApp } from "firebase-admin/app";
-import { getAuth as getAdminAuth } from "firebase-admin/auth";
-import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { dailyBoardDocId, wordDocId } from "@/lib/db-schema";
 
 const runIf = process.env.FIRESTORE_EMULATOR_HOST ? describe : describe.skip;
 
-const ALICE = "11111111-1111-4111-8111-111111111111";
-const BOB = "22222222-2222-4222-8222-222222222222";
 const DATE = "2000-01-02"; // far from any real board date
 
 runIf("firestore.rules", () => {
   let app: FirebaseApp;
+  let auth: Auth;
   let db: Firestore;
+  let ALICE: string;
+  let BOB: string;
 
   beforeAll(async () => {
-    const admin = getApps()[0] ?? initAdminApp({ projectId: "boggle-me" });
-    const adminAuth = getAdminAuth(admin);
-    for (const [uid, email] of [[ALICE, "alice@example.com"], [BOB, "bob@example.com"]]) {
-      await adminAuth.deleteUser(uid).catch(() => {});
-      await adminAuth.createUser({ uid, email, password: "password123" });
-    }
-    const adminDb = getAdminFirestore(admin);
-    await adminDb.doc(`words/${wordDocId(BOB, DATE, "BOBS")}`).set({
-      id: "x", user_id: BOB, word: "BOBS", score: 1, board_date: DATE, created_at: new Date(), elapsed_at: 3,
+    // Clear emulator users so the fixed test emails can be re-created
+    await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/emulator/v1/projects/boggle-me/accounts`, {
+      method: "DELETE",
     });
-    await adminDb.doc(`board_word_counts/${DATE}`).set({ board_date: DATE, total_words: 1 });
-    await adminDb.doc(`games/${DATE}`).set({ date: DATE, letters: "A".repeat(25), seed: "s" });
 
     app = initClientApp({ apiKey: "fake", projectId: "boggle-me" }, "rules-test");
-    const auth = getAuth(app);
+    auth = getAuth(app);
     connectAuthEmulator(auth, `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`, { disableWarnings: true });
     db = getFirestore(app);
     const [host, port] = process.env.FIRESTORE_EMULATOR_HOST!.split(":");
     connectFirestoreEmulator(db, host, Number(port));
-    await signInWithEmailAndPassword(auth, "alice@example.com", "password123");
+
+    // Bob signs up and saves a word, then Alice signs up and is the active user
+    BOB = (await createUserWithEmailAndPassword(auth, "bob@example.com", "password123")).user.uid;
+    await setDoc(doc(db, "words", wordDocId(BOB, DATE, "BOBS")), {
+      id: "b1", user_id: BOB, word: "BOBS", score: 1, board_date: DATE, created_at: serverTimestamp(), elapsed_at: 3,
+    });
+    ALICE = (await createUserWithEmailAndPassword(auth, "alice@example.com", "password123")).user.uid;
   });
 
   afterAll(async () => {
-    await signOut(getAuth(app));
+    await signOut(auth);
     await deleteApp(app);
   });
 
@@ -116,10 +118,8 @@ runIf("firestore.rules", () => {
     expect(all.size).toBe(1);
   });
 
-  test("board_word_counts is public; games and submissions are server-only", async () => {
-    expect((await getDoc(doc(db, "board_word_counts", DATE))).exists()).toBe(true);
-    await denied(setDoc(doc(db, "board_word_counts", DATE), { total_words: 0 }));
+  test("collections without rules are closed", async () => {
     await denied(getDoc(doc(db, "games", DATE)));
-    await denied(getDocs(collection(db, "submissions")));
+    await denied(setDoc(doc(db, "anything", "x"), { a: 1 }));
   });
 });

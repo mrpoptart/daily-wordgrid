@@ -25,7 +25,7 @@ Thanks for helping build Daily Word Grid! Please follow these guidelines so we c
 ```bash
 npm install
 npm run emulators   # Firebase Auth + Firestore emulators (needs Java)
-NEXT_PUBLIC_FIREBASE_EMULATOR=1 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 npm run dev
+NEXT_PUBLIC_FIREBASE_EMULATOR=1 npm run dev
 ```
 
 ## Quality Gates
@@ -41,7 +41,6 @@ CI will block merges if any gate fails.
 - Use `.env.local` for local dev; do not commit it
 - Configure environment variables in Vercel project settings for deploys
 - Required variables (examples):
-  - `FIREBASE_SERVICE_ACCOUNT` (server-only, service account JSON for firebase-admin)
   - `BOARD_DAILY_SALT` (server-only, used for deterministic boards)
 
 ## Commit & PR

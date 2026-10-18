@@ -43,9 +43,9 @@ A daily, deterministic, 5×5 word-finding game that blends the path-finding rule
         │  ▲
         │  │ (typed requests/responses via Zod)
         ▼  │
-[ API Routes / Server Actions ]  —>  [ Firestore (firebase-admin) ]
-        ▲
-[ Client ] —> [ Firestore (client SDK, guarded by firestore.rules) ]
+[ API Routes ]  (board generation + word validation; no database access)
+
+[ Client ] —> [ Firebase Auth + Firestore (client SDK, guarded by firestore.rules) ]
 ```
 
 ### Deterministic Daily Board
@@ -62,23 +62,22 @@ Dates are `YYYY-MM-DD` strings; timestamps are Firestore `Timestamp`s.
 users/{uid}                              id, email, full_name, created_at, last_login
 words/{user_id}_{board_date}_{word}      id, user_id, word, score, board_date, created_at, elapsed_at
 daily_boards/{user_id}_{board_date}      user_id, board_date, board_started, elapsed_seconds, time_limit_seconds
-games/{date}                             date, seed, letters, created_at          (server-only)
-board_word_counts/{board_date}           total_words, count_4 … count_8_plus     (public read)
-submissions/{user_id}_{date}             id, user_id, date, words (JSON), score, created_at (server-only)
 ```
 Composite keys are deterministic document IDs, so uniqueness is enforced the same way the
 Postgres constraints were. Access control lives in `firestore.rules` (mirrors the old RLS
 policies) and is tested with `npm run test:emulator`. Deploy rules with `npm run deploy:rules`.
 
+Boards are deterministic, so the API generates them (and their word-length counts) on demand
+rather than storing them.
+
 ### API Surface (planned)
 - `GET /api/board?date=YYYY-MM-DD` → returns today’s board and metadata
 - `POST /api/validate` → validates a proposed word path against the board
-- `POST /api/submit` → stores words + final score for the authenticated user
-- `GET /api/leaderboard?date=YYYY-MM-DD` → top scores for the day
+- `GET /api/leaderboard?date=YYYY-MM-DD` → top scores for the day (returns `unavailable` until scores are stored)
 
 ### Health Check
-- `GET /api/health` → returns `{ status: "ok" | "degraded", env: { hasFirebaseCredentials, firebaseProjectId, firebaseHealth, firebaseError, ... } }`.
-- `status` is `"degraded"` and `env.firebaseError` carries the underlying error whenever Firestore cannot be reached (e.g. missing or invalid `FIREBASE_SERVICE_ACCOUNT`).
+- `GET /api/health` → returns `{ status: "ok" | "degraded", env: { firebaseProjectId, firebaseHealth, firebaseError, ... } }`.
+- `status` is `"degraded"` and `env.firebaseError` carries the underlying error whenever Firestore cannot be reached .
 
 ## Local Development
 
@@ -104,10 +103,8 @@ policies) and is tested with `npm run test:emulator`. Deploy rules with `npm run
 3. **Configure Environment** (`.env.local`)
    ```
    NEXT_PUBLIC_FIREBASE_EMULATOR=1
-   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
-   FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
    ```
-   Against the real project instead, set `FIREBASE_SERVICE_ACCOUNT` (service account JSON) and omit the emulator variables.
+   Omit it to run against the real `boggle-me` project.
 
 4. **Run App**
    ```bash
@@ -137,13 +134,8 @@ npm run test:watch  # watch mode
 ## Deployment
 - Target: Vercel
 - Firebase project: `boggle-me` (web config is in `lib/firebase.ts`; it is public by design).
-- Configure `FIREBASE_SERVICE_ACCOUNT` (server-only) and `BOARD_DAILY_SALT` in Vercel.
+- Configure `BOARD_DAILY_SALT` in Vercel (no Firebase secrets are needed).
 - In the Firebase console, enable the Google and Email link sign-in providers and add the production domain under Authentication → Settings → Authorized domains.
-
-## Migrating from Supabase
-The app previously ran on Supabase. `scripts/export-supabase.mjs` exports auth users and tables to JSON, and
-`scripts/migrate-supabase-to-firebase.mjs` imports them into Firebase, keeping each Supabase user id as the
-Firebase uid and linking Google identities by their Google account id, so existing players keep their history.
 
 ---
 

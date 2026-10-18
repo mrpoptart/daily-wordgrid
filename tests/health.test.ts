@@ -1,57 +1,35 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { GET, HealthResponse } from '@/app/api/health/route';
 
-const getMock = vi.fn();
-
-// Mock Firebase Admin
-vi.mock('@/lib/firebase-admin', () => ({
-  adminApp: { options: { projectId: 'boggle-me' } },
-  adminDb: {
-    collection: vi.fn().mockReturnValue({
-      limit: vi.fn().mockReturnValue({ get: (...args: unknown[]) => getMock(...args) }),
-    }),
-  },
-}));
+const fetchMock = vi.fn();
 
 describe('Health API', () => {
-  const oldServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-
   beforeEach(() => {
-    getMock.mockReset();
-    getMock.mockResolvedValue({ empty: true });
-    process.env.FIREBASE_SERVICE_ACCOUNT = oldServiceAccount;
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
   });
 
-  test('returns status ok and environment flags', async () => {
-    process.env.FIREBASE_SERVICE_ACCOUNT = '{"project_id":"boggle-me"}';
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('reports ok when Firestore answers (a rules denial still proves reachability)', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 403 }));
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
     expect(response.status).toBe(200);
     expect(json.status).toBe('ok');
-    expect(json.env.hasFirebaseCredentials).toBe(true);
     expect(json.env.firebaseProjectId).toBe('boggle-me');
     expect(json.env.firebaseHealth).toBe(true);
     expect(json.env.firebaseError).toBeNull();
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/projects/boggle-me/databases/(default)/documents/');
   });
 
-  test('handles missing Firebase credentials', async () => {
-    delete process.env.FIREBASE_SERVICE_ACCOUNT;
-
-    const response = await GET();
-    const json = (await response.json()) as HealthResponse;
-
-    expect(json.env.hasFirebaseCredentials).toBe(false);
-  });
-
-  test('reports degraded status with the Firestore error when the query fails', async () => {
+  test('reports degraded status when Firestore returns a server error', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    getMock.mockRejectedValue(
-      Object.assign(new Error('14 UNAVAILABLE: No connection established'), {
-        details: 'getaddrinfo ENOTFOUND firestore.googleapis.com',
-      }),
-    );
+    fetchMock.mockResolvedValue(new Response('', { status: 503 }));
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
@@ -59,22 +37,24 @@ describe('Health API', () => {
     expect(response.status).toBe(200);
     expect(json.status).toBe('degraded');
     expect(json.env.firebaseHealth).toBe(false);
-    expect(json.env.firebaseError).toContain('UNAVAILABLE');
-    expect(json.env.firebaseError).toContain('ENOTFOUND firestore.googleapis.com');
+    expect(json.env.firebaseError).toBe('Firestore responded 503');
 
     consoleError.mockRestore();
   });
 
-  test('reports degraded status when credentials are rejected', async () => {
+  test('reports degraded status with the network error when Firestore is unreachable', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    getMock.mockRejectedValue(new Error('7 PERMISSION_DENIED: Missing or insufficient permissions.'));
+    fetchMock.mockRejectedValue(
+      new TypeError('fetch failed', { cause: new Error('getaddrinfo ENOTFOUND firestore.googleapis.com') }),
+    );
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
     expect(json.status).toBe('degraded');
     expect(json.env.firebaseHealth).toBe(false);
-    expect(json.env.firebaseError).toBe('7 PERMISSION_DENIED: Missing or insufficient permissions.');
+    expect(json.env.firebaseError).toContain('fetch failed');
+    expect(json.env.firebaseError).toContain('ENOTFOUND firestore.googleapis.com');
 
     consoleError.mockRestore();
   });
