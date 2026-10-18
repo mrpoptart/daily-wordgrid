@@ -63,9 +63,9 @@ users/{uid}                              id, email, full_name, created_at, last_
 words/{user_id}_{board_date}_{word}      id, user_id, word, score, board_date, created_at, elapsed_at
 daily_boards/{user_id}_{board_date}      user_id, board_date, board_started, elapsed_seconds, time_limit_seconds
 ```
-Composite keys are deterministic document IDs, so uniqueness is enforced the same way the
-Postgres constraints were. Access control lives in `firestore.rules` (mirrors the old RLS
-policies) and is tested with `npm run test:emulator`. Deploy rules with `npm run deploy:rules`.
+Composite keys are deterministic document IDs, so there is one document per key. Access control
+lives in `firestore.rules` (each user can read and write only their own data) and is tested with
+`npm run test:emulator`. Deploy rules with `npm run deploy:rules`.
 
 Boards are deterministic, so the API generates them (and their word-length counts) on demand
 rather than storing them.
