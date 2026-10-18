@@ -30,6 +30,7 @@ import {
   validateWord,
 } from "@/lib/validation/words";
 import { scoreWordLength } from "@/lib/scoring";
+import { describeDbError } from "@/lib/db-errors";
 import { MIN_PATH_LENGTH } from "@/lib/validation/paths";
 import type { WordLengthCounts } from "@/lib/board/solver";
 import {
@@ -52,6 +53,12 @@ export type WordGridProps = {
 };
 
 type AddedWord = { word: string; score: number; timestamp?: string; elapsedAt?: number };
+
+// Errors stay on screen long enough to read (and screenshot) on a phone.
+function reportDbError(title: string, error: unknown) {
+  console.error(`${title}:`, error);
+  toast.error(title, { description: describeDbError(error), duration: 15000 });
+}
 
 export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) {
   const [words, setWords] = useState<AddedWord[]>([]);
@@ -77,6 +84,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   const userIdRef = useRef<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const syncErrorShownRef = useRef(false);
   const feedbackTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Detect touch devices to avoid focusing the input (which opens virtual keyboard)
@@ -111,7 +119,13 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
         elapsed_seconds: seconds,
       });
     } catch (error) {
-      console.error("Failed to sync elapsed time:", error);
+      // Syncs run often; show the first failure only
+      if (!syncErrorShownRef.current) {
+        syncErrorShownRef.current = true;
+        reportDbError("Failed to save timer", error);
+      } else {
+        console.error("Failed to sync elapsed time:", error);
+      }
     }
   }, [boardDate]);
 
@@ -144,7 +158,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
             }));
             setWords(Array.from(uniqueWords.values()));
           })
-          .catch((error) => console.error("Failed to load words:", error));
+          .catch((error) => reportDbError("Failed to load your words", error));
 
         // Fetch streak (direct query, no API round-trip)
         getDocs(query(collection(db, COLLECTIONS.dailyBoards), where("user_id", "==", user.uid)))
@@ -204,7 +218,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
               }
             }
           })
-          .catch((error) => console.error("Failed to load board state:", error));
+          .catch((error) => reportDbError("Failed to load your game", error));
       }
     });
   }, [boardDate]);
@@ -368,7 +382,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
           });
         }
       } catch (error) {
-        console.error("Failed to start board:", error);
+        reportDbError("Failed to start game", error);
       }
     }
     elapsedBaseRef.current = 0;
@@ -414,7 +428,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
           time_limit_seconds: newLimit,
         });
       } catch (error) {
-        console.error("Failed to persist time extension:", error);
+        reportDbError("Failed to save time extension", error);
       }
     }
 
@@ -592,8 +606,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
           elapsed_at: Math.floor(currentElapsed),
         });
       } catch (error) {
-        console.error("Failed to save word:", error);
-        toast.error("Failed to save word");
+        reportDbError("Failed to save word", error);
         setWords(prev => prev.filter(w => w.word !== word));
       }
 
