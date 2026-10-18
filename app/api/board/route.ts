@@ -1,6 +1,8 @@
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { COLLECTIONS, type BoardWordCountsDoc, type GameDoc } from "@/lib/db-schema";
 import { generateBoardForDate } from "@/lib/board/generate";
 import { findAllBoardWords, computeWordLengthCounts, type WordLengthCounts } from "@/lib/board/solver";
 import type { Board, BoardRow } from "@/lib/board/types";
@@ -39,17 +41,9 @@ export async function GET(req: Request) {
   let letters: string;
 
   try {
-    // Try to fetch existing game from Supabase
-    const { data: record, error } = await supabaseAdmin
-      .from('games')
-      .select('*')
-      .eq('date', date)
-      .single();
-
-    if (error && error.code !== 'PGRST116') { // PGRST116 is no rows found
-        console.error("Failed to fetch game from Supabase", error);
-        throw error;
-    }
+    // Try to fetch existing game from Firestore
+    const snapshot = await adminDb.collection(COLLECTIONS.games).doc(date).get();
+    const record = snapshot.exists ? (snapshot.data() as GameDoc) : null;
 
     if (record) {
         letters = record.letters;
@@ -77,10 +71,12 @@ export async function GET(req: Request) {
       letters = flattenBoard(board);
 
       try {
-        await supabaseAdmin.from('games').insert({
+        // create() fails if the doc exists, like the former unique constraint
+        await adminDb.collection(COLLECTIONS.games).doc(date).create({
             date,
             letters,
-            seed
+            seed,
+            created_at: FieldValue.serverTimestamp(),
         });
       } catch (createError: unknown) {
         // If create fails (e.g. duplicate because of race condition), ignore or log
@@ -91,11 +87,13 @@ export async function GET(req: Request) {
 
   // Fetch or compute word length counts
   let wordLengthCounts: WordLengthCounts;
-  const { data: cached } = await supabaseAdmin
-    .from("board_word_counts")
-    .select("count_4, count_5, count_6, count_7, count_8_plus")
-    .eq("board_date", date)
-    .single();
+  let cached: BoardWordCountsDoc | null = null;
+  try {
+    const snapshot = await adminDb.collection(COLLECTIONS.boardWordCounts).doc(date).get();
+    cached = snapshot.exists ? (snapshot.data() as BoardWordCountsDoc) : null;
+  } catch (error) {
+    console.error("Failed to read cached word counts:", error);
+  }
 
   if (cached) {
     wordLengthCounts = {
@@ -110,9 +108,10 @@ export async function GET(req: Request) {
     wordLengthCounts = computeWordLengthCounts(allWords);
 
     // Persist to DB (fire-and-forget, ignore errors from race conditions)
-    supabaseAdmin
-      .from("board_word_counts")
-      .insert({
+    adminDb
+      .collection(COLLECTIONS.boardWordCounts)
+      .doc(date)
+      .create({
         board_date: date,
         total_words: allWords.length,
         count_4: wordLengthCounts["4"],
@@ -120,9 +119,10 @@ export async function GET(req: Request) {
         count_6: wordLengthCounts["6"],
         count_7: wordLengthCounts["7"],
         count_8_plus: wordLengthCounts["8+"],
+        created_at: FieldValue.serverTimestamp(),
       })
-      .then(({ error }) => {
-        if (error) console.error("Failed to cache word counts:", error);
+      .catch((error) => {
+        console.error("Failed to cache word counts:", error);
       });
   }
 

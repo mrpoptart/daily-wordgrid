@@ -1,0 +1,66 @@
+rules_version = '2';
+
+// Mirrors the former Supabase row-level-security policies.
+// The server (firebase-admin) bypasses these rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Reading a missing doc returns "no rows" instead of an error, like a SELECT would.
+    function ownsOrMissing() {
+      return resource == null || resource.data.user_id == request.auth.uid;
+    }
+
+    function isDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    // users: read / insert / update own row
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.id == userId;
+      allow update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.id == resource.data.id;
+    }
+
+    // words: read / insert own rows; UNIQUE(user_id, word, board_date) via the doc id,
+    // so re-inserting an existing word is an update and is denied.
+    match /words/{wordId} {
+      allow read: if signedIn() && ownsOrMissing();
+      allow create: if signedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && wordId == request.auth.uid + '_' + request.resource.data.board_date + '_' + request.resource.data.word
+        && request.resource.data.word is string
+        && request.resource.data.score is int
+        && isDate(request.resource.data.board_date)
+        && (request.resource.data.elapsed_at == null || request.resource.data.elapsed_at is int);
+    }
+
+    // daily_boards: read / insert / update own rows; PRIMARY KEY (user_id, board_date) via the doc id
+    match /daily_boards/{boardId} {
+      allow read: if signedIn() && ownsOrMissing();
+      allow create: if signedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && boardId == request.auth.uid + '_' + request.resource.data.board_date
+        && isDate(request.resource.data.board_date)
+        && request.resource.data.elapsed_seconds is int
+        && request.resource.data.time_limit_seconds is int;
+      allow update: if signedIn()
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.board_date == resource.data.board_date
+        && request.resource.data.elapsed_seconds is int
+        && request.resource.data.time_limit_seconds is int;
+    }
+
+    // board_word_counts: public, read-only game data
+    match /board_word_counts/{boardDate} {
+      allow read: if true;
+    }
+
+    // games, submissions: server-only
+  }
+}

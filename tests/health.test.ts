@@ -1,85 +1,80 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { GET, HealthResponse } from '@/app/api/health/route';
 
-const selectMock = vi.fn();
+const getMock = vi.fn();
 
-// Mock Supabase
-vi.mock('@/lib/supabase-admin', () => ({
-  supabaseAdmin: {
-    from: vi.fn().mockReturnValue({
-      select: (...args: unknown[]) => selectMock(...args),
+// Mock Firebase Admin
+vi.mock('@/lib/firebase-admin', () => ({
+  adminApp: { options: { projectId: 'boggle-me' } },
+  adminDb: {
+    collection: vi.fn().mockReturnValue({
+      limit: vi.fn().mockReturnValue({ get: (...args: unknown[]) => getMock(...args) }),
     }),
   },
 }));
 
 describe('Health API', () => {
-  const oldSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const oldServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
 
   beforeEach(() => {
-    selectMock.mockReset();
-    selectMock.mockResolvedValue({ error: null });
-    process.env.NEXT_PUBLIC_SUPABASE_URL = oldSupabaseUrl;
+    getMock.mockReset();
+    getMock.mockResolvedValue({ empty: true });
+    process.env.FIREBASE_SERVICE_ACCOUNT = oldServiceAccount;
   });
 
   test('returns status ok and environment flags', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.FIREBASE_SERVICE_ACCOUNT = '{"project_id":"boggle-me"}';
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
     expect(response.status).toBe(200);
     expect(json.status).toBe('ok');
-    expect(json.env.hasSupabaseUrl).toBe(true);
-    expect(json.env.supabaseHost).toBe('example.supabase.co');
-    expect(json.env.supabaseHealth).toBe(true);
-    expect(json.env.supabaseError).toBeNull();
+    expect(json.env.hasFirebaseCredentials).toBe(true);
+    expect(json.env.firebaseProjectId).toBe('boggle-me');
+    expect(json.env.firebaseHealth).toBe(true);
+    expect(json.env.firebaseError).toBeNull();
   });
 
-  test('handles missing Supabase URL', async () => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  test('handles missing Firebase credentials', async () => {
+    delete process.env.FIREBASE_SERVICE_ACCOUNT;
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
-    expect(json.env.hasSupabaseUrl).toBe(false);
-    expect(json.env.supabaseHost).toBeNull();
+    expect(json.env.hasFirebaseCredentials).toBe(false);
   });
 
-  test('reports degraded status with the Supabase error when the query fails', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  test('reports degraded status with the Firestore error when the query fails', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    selectMock.mockResolvedValue({
-      error: {
-        message: 'TypeError: fetch failed',
-        details: 'Caused by: Error: getaddrinfo ENOTFOUND example.supabase.co',
-        hint: '',
-        code: '',
-      },
-    });
+    getMock.mockRejectedValue(
+      Object.assign(new Error('14 UNAVAILABLE: No connection established'), {
+        details: 'getaddrinfo ENOTFOUND firestore.googleapis.com',
+      }),
+    );
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
     expect(response.status).toBe(200);
     expect(json.status).toBe('degraded');
-    expect(json.env.supabaseHealth).toBe(false);
-    expect(json.env.supabaseError).toContain('fetch failed');
-    expect(json.env.supabaseError).toContain('ENOTFOUND example.supabase.co');
+    expect(json.env.firebaseHealth).toBe(false);
+    expect(json.env.firebaseError).toContain('UNAVAILABLE');
+    expect(json.env.firebaseError).toContain('ENOTFOUND firestore.googleapis.com');
 
     consoleError.mockRestore();
   });
 
-  test('reports degraded status when the Supabase client throws', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  test('reports degraded status when credentials are rejected', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    selectMock.mockRejectedValue(new Error('connection refused'));
+    getMock.mockRejectedValue(new Error('7 PERMISSION_DENIED: Missing or insufficient permissions.'));
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
     expect(json.status).toBe('degraded');
-    expect(json.env.supabaseHealth).toBe(false);
-    expect(json.env.supabaseError).toBe('connection refused');
+    expect(json.env.firebaseHealth).toBe(false);
+    expect(json.env.firebaseError).toBe('7 PERMISSION_DENIED: Missing or insufficient permissions.');
 
     consoleError.mockRestore();
   });

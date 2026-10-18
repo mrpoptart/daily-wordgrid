@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Daily Wordgrid",
-  description: "A deterministic 5×5 Boggle × Wordle mashup with Supabase-powered leaderboards.",
+  description: "A deterministic 5×5 Boggle × Wordle mashup with daily leaderboards.",
 };
 
 export default function RootLayout({

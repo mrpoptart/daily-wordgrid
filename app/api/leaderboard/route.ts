@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { adminDb } from "@/lib/firebase-admin";
+import { COLLECTIONS, timestampToIso, type SubmissionDoc } from "@/lib/db-schema";
 import { resolveBoardDate } from "@/lib/board/api-helpers";
 
 const DEFAULT_LIMIT = 25;
@@ -137,20 +138,21 @@ export async function GET(req: Request) {
 
   try {
     // Fetch submissions for the date
-    // Sort by score (desc), created_at (asc)
-    const { data: rows, count, error } = await supabaseAdmin
-        .from('submissions')
-        .select('*', { count: 'exact' })
-        .eq('date', date)
-        .order('score', { ascending: false })
-        .order('created_at', { ascending: true })
-        .limit(limit);
+    // Sort by score (desc), created_at (asc) in memory: one doc per player per day
+    const snapshot = await adminDb
+        .collection(COLLECTIONS.submissions)
+        .where('date', '==', date)
+        .get();
 
-    if (error) {
-        throw error;
-    }
+    const allRows = snapshot.docs
+        .map((d) => d.data() as SubmissionDoc)
+        .map((row) => ({ ...row, created_at: timestampToIso(row.created_at) }));
+    allRows.sort((a, b) =>
+        normalizeScore(b.score) - normalizeScore(a.score) ||
+        (a.created_at ?? '').localeCompare(b.created_at ?? ''));
+    const rows = allRows.slice(0, limit);
 
-    const totalPlayers = count ?? 0;
+    const totalPlayers = snapshot.size;
 
     let lastRank = 0;
     let lastScore: number | null = null;

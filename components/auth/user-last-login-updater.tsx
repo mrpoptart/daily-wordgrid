@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { db, getCurrentUser } from "@/lib/firebase";
+import { COLLECTIONS } from "@/lib/db-schema";
 
 export function UserLastLoginUpdater() {
   const updatedRef = useRef(false);
@@ -10,26 +12,30 @@ export function UserLastLoginUpdater() {
     if (updatedRef.current) return;
 
     const updateLastLogin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      const user = await getCurrentUser();
+      if (user) {
         updatedRef.current = true;
-        // Fire and forget
-        supabase
-          .from("users")
-          .upsert(
-            {
-              id: session.user.id,
-              email: session.user.email,
-              last_login: new Date().toISOString(),
-            },
-            { onConflict: "id" }
+        // Fire and forget (upsert on id)
+        const ref = doc(db, COLLECTIONS.users, user.uid);
+        getDoc(ref)
+          .then((existing) =>
+            setDoc(
+              ref,
+              existing.exists()
+                ? { email: user.email, last_login: serverTimestamp() }
+                : {
+                    id: user.uid,
+                    email: user.email,
+                    full_name: user.displayName,
+                    created_at: serverTimestamp(),
+                    last_login: serverTimestamp(),
+                  },
+              { merge: true }
+            )
           )
-          .select()
-          .then(({ error }) => {
-            if (error) {
-              console.error("Failed to update last login:", error);
-              updatedRef.current = false; // Allow retry if failed? Maybe not to avoid loops.
-            }
+          .catch((error) => {
+            console.error("Failed to update last login:", error);
+            updatedRef.current = false; // Allow retry if failed? Maybe not to avoid loops.
           });
       }
     };

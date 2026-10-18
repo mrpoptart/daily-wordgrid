@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { adminApp, adminDb } from '@/lib/firebase-admin';
+import { COLLECTIONS } from '@/lib/db-schema';
 
 export const dynamic = 'force-dynamic';
 
 export type HealthResponse = {
   status: 'ok' | 'degraded';
   env: {
-    hasSupabaseUrl: boolean;
-    supabaseHost: string | null;
-    supabaseHealth: boolean;
-    supabaseError: string | null;
+    hasFirebaseCredentials: boolean;
+    firebaseProjectId: string;
+    firebaseHealth: boolean;
+    firebaseError: string | null;
     vercelEnv: string | null;
     hasVercelUrl: boolean;
   };
@@ -22,7 +23,7 @@ function describeError(error: unknown): string {
     const record = error as { message?: unknown; details?: unknown; cause?: unknown };
     const parts: string[] = [];
     if (typeof record.message === 'string') parts.push(record.message);
-    // supabase-js wraps the underlying fetch failure (e.g. DNS ENOTFOUND) in `details`
+    // gRPC/REST errors may carry the underlying failure in `details`
     if (typeof record.details === 'string' && record.details !== record.message) {
       parts.push(record.details);
     }
@@ -35,51 +36,36 @@ function describeError(error: unknown): string {
   return String(error);
 }
 
-function resolveSupabaseHost(url: string | undefined): string | null {
-  if (!url || !url.trim()) return null;
-  try {
-    return new URL(url.trim()).host;
-  } catch {
-    return url.trim();
-  }
-}
-
 export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const hasSupabaseUrl = Boolean(supabaseUrl && supabaseUrl.trim());
-  const supabaseHost = resolveSupabaseHost(supabaseUrl);
+  const hasFirebaseCredentials = Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT?.trim() || process.env.FIRESTORE_EMULATOR_HOST?.trim()
+  );
+  const firebaseProjectId = adminApp.options.projectId ?? 'unknown';
 
-  let supabaseHealth = false;
-  let supabaseError: string | null = null;
+  let firebaseHealth = false;
+  let firebaseError: string | null = null;
   try {
-    // Simple query to check connection. Also serves as the keepalive ping that
-    // stops a free-tier Supabase project from being auto-paused for inactivity.
-    const { error } = await supabaseAdmin
-      .from('games')
-      .select('date', { count: 'exact', head: true });
-    if (!error) {
-      supabaseHealth = true;
-    } else {
-      supabaseError = describeError(error);
-    }
+    // Simple read to check connectivity and credentials.
+    await adminDb.collection(COLLECTIONS.games).limit(1).get();
+    firebaseHealth = true;
   } catch (e) {
-    supabaseError = describeError(e);
+    firebaseError = describeError(e);
   }
 
-  if (supabaseError) {
-    console.error('Supabase health check failed:', supabaseError);
+  if (firebaseError) {
+    console.error('Firebase health check failed:', firebaseError);
   }
 
   const vercelEnv = process.env.VERCEL_ENV ?? null;
   const hasVercelUrl = Boolean(process.env.VERCEL_URL && process.env.VERCEL_URL.trim());
 
   const body: HealthResponse = {
-    status: supabaseHealth ? 'ok' : 'degraded',
+    status: firebaseHealth ? 'ok' : 'degraded',
     env: {
-      hasSupabaseUrl,
-      supabaseHost,
-      supabaseHealth,
-      supabaseError,
+      hasFirebaseCredentials,
+      firebaseProjectId,
+      firebaseHealth,
+      firebaseError,
       vercelEnv,
       hasVercelUrl,
     },

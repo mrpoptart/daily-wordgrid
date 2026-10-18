@@ -1,6 +1,8 @@
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { COLLECTIONS, type GameDoc } from "@/lib/db-schema";
 import { generateBoardForDate } from "@/lib/board/generate";
 import { findAllBoardWords } from "@/lib/board/solver";
 import type { Board, BoardRow } from "@/lib/board/types";
@@ -16,14 +18,16 @@ export async function GET(req: Request) {
   let board: Board;
 
   // Try to fetch board from DB
-  const { data: record } = await supabaseAdmin
-    .from("games")
-    .select("letters")
-    .eq("date", date)
-    .single();
+  let record: GameDoc | null = null;
+  try {
+    const snapshot = await adminDb.collection(COLLECTIONS.games).doc(date).get();
+    record = snapshot.exists ? (snapshot.data() as GameDoc) : null;
+  } catch (error) {
+    console.error("Failed to fetch board:", error);
+  }
 
   if (record) {
-    const letters = record.letters as string;
+    const letters = record.letters;
     const rows: BoardRow[] = [];
     for (let i = 0; i < 5; i++) {
       const rowSlice = letters.slice(i * 5, (i + 1) * 5).split("");
@@ -46,11 +50,12 @@ export async function GET(req: Request) {
     const letters = flattenBoard(board);
     const seed = createHash("sha256").update(`${date}|${salt}`).digest("hex");
 
-    supabaseAdmin
-      .from("games")
-      .insert({ date, letters, seed })
-      .then(({ error }) => {
-        if (error) console.error("Failed to persist board:", error);
+    adminDb
+      .collection(COLLECTIONS.games)
+      .doc(date)
+      .create({ date, letters, seed, created_at: FieldValue.serverTimestamp() })
+      .catch((error) => {
+        console.error("Failed to persist board:", error);
       });
   }
 

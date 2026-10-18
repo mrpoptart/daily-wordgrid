@@ -36,9 +36,13 @@ yarn-error.log*
 # vercel
 .vercel
 
-# supabase
-supabase/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# migration exports (contain user data)
+supabase-export*.json
+
+# firebase emulator logs
+*-debug.log

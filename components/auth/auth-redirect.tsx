@@ -2,17 +2,15 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { getCurrentUser } from "@/lib/firebase";
 
 export function AuthRedirect() {
   const router = useRouter();
 
   useEffect(() => {
     const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
+      const user = await getCurrentUser();
+      if (user) {
         router.replace("/play");
       }
     };

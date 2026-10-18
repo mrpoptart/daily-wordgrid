@@ -2,77 +2,83 @@ import { render } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { UserLastLoginUpdater } from "@/components/auth/user-last-login-updater";
 
-// Mock Supabase
-const mockUpsert = vi.fn().mockReturnValue({
-  select: vi.fn().mockResolvedValue({ error: null }),
-});
-const mockFrom = vi.fn().mockReturnValue({
-  upsert: mockUpsert,
-});
+const mockGetCurrentUser = vi.fn();
+const mockGetDoc = vi.fn();
+const mockSetDoc = vi.fn();
 
-const mockGetSession = vi.fn();
+vi.mock("@/lib/firebase", () => ({
+  db: {},
+  getCurrentUser: () => mockGetCurrentUser(),
+}));
 
-vi.mock("@/lib/supabase", () => ({
-  supabase: {
-    auth: {
-      getSession: () => mockGetSession(),
-    },
-    from: (table: string) => mockFrom(table),
-  },
+vi.mock("firebase/firestore", () => ({
+  doc: (_db: unknown, collection: string, id: string) => ({ path: `${collection}/${id}` }),
+  getDoc: (ref: unknown) => mockGetDoc(ref),
+  setDoc: (...args: unknown[]) => mockSetDoc(...args),
+  serverTimestamp: () => "SERVER_TIMESTAMP",
 }));
 
 describe("UserLastLoginUpdater", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSetDoc.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("updates last_login when user is logged in", async () => {
-    // Mock successful session
-    mockGetSession.mockResolvedValue({
-      data: {
-        session: {
-          user: { id: "user-123" },
-        },
-      },
-    });
+  it("updates last_login when an existing user is logged in", async () => {
+    mockGetCurrentUser.mockResolvedValue({ uid: "user-123", email: "a@b.c", displayName: "A" });
+    mockGetDoc.mockResolvedValue({ exists: () => true });
 
     render(<UserLastLoginUpdater />);
 
-    // Wait for effect
     await vi.waitFor(() => {
-      expect(mockGetSession).toHaveBeenCalled();
+      expect(mockSetDoc).toHaveBeenCalled();
     });
 
-    expect(mockFrom).toHaveBeenCalledWith("users");
-    expect(mockUpsert).toHaveBeenCalledWith(
+    expect(mockGetDoc).toHaveBeenCalledWith({ path: "users/user-123" });
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      { path: "users/user-123" },
+      { email: "a@b.c", last_login: "SERVER_TIMESTAMP" },
+      { merge: true }
+    );
+  });
+
+  it("creates the profile on first login", async () => {
+    mockGetCurrentUser.mockResolvedValue({ uid: "user-456", email: "new@b.c", displayName: "New" });
+    mockGetDoc.mockResolvedValue({ exists: () => false });
+
+    render(<UserLastLoginUpdater />);
+
+    await vi.waitFor(() => {
+      expect(mockSetDoc).toHaveBeenCalled();
+    });
+
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      { path: "users/user-456" },
       expect.objectContaining({
-        id: "user-123",
-        last_login: expect.any(String),
+        id: "user-456",
+        email: "new@b.c",
+        full_name: "New",
+        created_at: "SERVER_TIMESTAMP",
+        last_login: "SERVER_TIMESTAMP",
       }),
-      { onConflict: "id" }
+      { merge: true }
     );
   });
 
   it("does not update last_login when user is not logged in", async () => {
-    // Mock no session
-    mockGetSession.mockResolvedValue({
-      data: {
-        session: null,
-      },
-    });
+    mockGetCurrentUser.mockResolvedValue(null);
 
     render(<UserLastLoginUpdater />);
 
-    // Wait for effect
     await vi.waitFor(() => {
-      expect(mockGetSession).toHaveBeenCalled();
+      expect(mockGetCurrentUser).toHaveBeenCalled();
     });
 
-    expect(mockFrom).not.toHaveBeenCalled();
-    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockGetDoc).not.toHaveBeenCalled();
+    expect(mockSetDoc).not.toHaveBeenCalled();
   });
 });

@@ -2,13 +2,14 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { describeAuthError } from "@/lib/auth-errors";
+import { GoogleAuthProvider, sendSignInLinkToEmail, signInWithPopup } from "firebase/auth";
+import { auth, EMAIL_FOR_SIGN_IN_KEY } from "@/lib/firebase";
+import { describeAuthError, isAuthCancellation } from "@/lib/auth-errors";
 
 const STATUS_MESSAGES = {
   idle: "",
   loading: "Sending magic link...",
-  oauth: "Redirecting to Google...",
+  oauth: "Opening Google sign-in...",
   success: "Check your email for the magic link!",
 } as const;
 
@@ -39,14 +40,15 @@ export function UnifiedLogin({ redirectPath = "/play", className = "" }: Unified
       setState("loading");
       setError("");
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}${redirectPath}` : undefined,
-        },
+      await sendSignInLinkToEmail(auth, email, {
+        url: `${window.location.origin}${redirectPath}`,
+        handleCodeInApp: true,
       });
-
-      if (error) throw error;
+      try {
+        window.localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
+      } catch {
+        // storage unavailable; the user will be asked to confirm their email
+      }
 
       setState("success");
     } catch (cause) {
@@ -60,16 +62,14 @@ export function UnifiedLogin({ redirectPath = "/play", className = "" }: Unified
       setState("oauth");
       setError("");
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}${redirectPath}` : undefined
-        }
-      });
-
-      if (error) throw error;
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      window.location.assign(redirectPath);
 
     } catch (cause) {
+      if (isAuthCancellation(cause)) {
+        setState("idle");
+        return;
+      }
       setError(describeAuthError(cause, "We couldn't start Google login. Please try again."));
       setState("error");
     }

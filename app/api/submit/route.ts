@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { randomUUID } from "crypto";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { COLLECTIONS, submissionDocId, timestampToIso, type SubmissionDoc } from "@/lib/db-schema";
 import { resolveBoardDate } from "@/lib/board/api-helpers";
 
 type SubmitRequestBody = {
@@ -99,20 +102,23 @@ export async function POST(req: Request) {
   const date = resolveBoardDate(typeof payload.date === "string" ? payload.date : null);
 
   try {
-    // Upsert submission
-    const { data: record, error } = await supabaseAdmin
-      .from('submissions')
-      .upsert({
+    // Upsert submission (unique on user_id + date)
+    const ref = adminDb.collection(COLLECTIONS.submissions).doc(submissionDocId(userId, date));
+    await adminDb.runTransaction(async (tx) => {
+      const existing = await tx.get(ref);
+      const previous = existing.exists ? (existing.data() as SubmissionDoc) : null;
+      tx.set(ref, {
+        id: previous?.id ?? randomUUID(),
         user_id: userId,
         date,
         words: JSON.stringify(words),
         score,
-      }, { onConflict: 'user_id,date' })
-      .select()
-      .single();
-
-    if (error || !record) {
-      console.error("Failed to record submission", error);
+        created_at: previous?.created_at ?? FieldValue.serverTimestamp(),
+      });
+    });
+    const saved = (await ref.get()).data() as SubmissionDoc | undefined;
+    if (!saved) {
+      console.error("Failed to record submission: document missing after write");
       return errorResponse("database-error", 500);
     }
 
@@ -120,11 +126,11 @@ export async function POST(req: Request) {
       status: "ok",
       date,
       submission: {
-        id: record.id,
-        userId: record.user_id,
+        id: saved.id,
+        userId: saved.user_id,
         words,
-        score: record.score,
-        createdAt: record.created_at,
+        score: saved.score,
+        createdAt: timestampToIso(saved.created_at),
       },
     };
 
