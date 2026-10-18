@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 
 // jsdom does not implement matchMedia — stub it for components that detect touch devices
-Object.defineProperty(window, 'matchMedia', {
+if (typeof window !== 'undefined') Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: (query: string) => ({
     matches: false,

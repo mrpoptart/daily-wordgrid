@@ -3,7 +3,27 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
-import { supabase } from "@/lib/supabase";
+import { signOut } from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { auth, db, getCurrentUser } from "@/lib/firebase";
+import {
+  COLLECTIONS,
+  dailyBoardDocId,
+  timestampToIso,
+  wordDocId,
+  type DailyBoardDoc,
+  type WordDoc,
+} from "@/lib/db-schema";
 import type { Board } from "@/lib/board/types";
 import {
   findPathForWord,
@@ -86,53 +106,54 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   // Helper: sync elapsed seconds to database
   const syncElapsedToDb = useCallback(async (seconds: number) => {
     if (!userIdRef.current) return;
-    const { error } = await supabase
-      .from("daily_boards")
-      .update({ elapsed_seconds: seconds })
-      .eq("user_id", userIdRef.current)
-      .eq("board_date", boardDate);
-    if (error) {
+    try {
+      await updateDoc(doc(db, COLLECTIONS.dailyBoards, dailyBoardDocId(userIdRef.current, boardDate)), {
+        elapsed_seconds: seconds,
+      });
+    } catch (error) {
       console.error("Failed to sync elapsed time:", error);
     }
   }, [boardDate]);
 
   // Load initial state
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        userIdRef.current = data.user.id;
-        setUserEmail(data.user.email ?? null);
+    getCurrentUser().then((user) => {
+      if (user) {
+        userIdRef.current = user.uid;
+        setUserEmail(user.email ?? null);
 
         // Fetch words (include elapsed_at for categorization)
-        supabase
-          .from("words")
-          .select("word, score, created_at, elapsed_at")
-          .eq("user_id", data.user.id)
-          .eq("board_date", boardDate)
-          .order("created_at", { ascending: true })
-          .then(({ data: fetchedWords }) => {
-            if (fetchedWords) {
-              const uniqueWords = new Map<string, AddedWord>();
-              fetchedWords.forEach(w => uniqueWords.set(w.word.toLowerCase(), {
-                word: w.word,
-                score: w.score,
-                timestamp: w.created_at,
-                elapsedAt: w.elapsed_at ?? undefined
-              }));
-              setWords(Array.from(uniqueWords.values()));
-            }
-          });
+        getDocs(
+          query(
+            collection(db, COLLECTIONS.words),
+            where("user_id", "==", user.uid),
+            where("board_date", "==", boardDate)
+          )
+        )
+          .then((snapshot) => {
+            const fetchedWords = snapshot.docs
+              .map((d) => d.data() as WordDoc)
+              .map((w) => ({ ...w, created_at: timestampToIso(w.created_at) ?? "" }))
+              .sort((a, b) => a.created_at.localeCompare(b.created_at));
+            const uniqueWords = new Map<string, AddedWord>();
+            fetchedWords.forEach(w => uniqueWords.set(w.word.toLowerCase(), {
+              word: w.word,
+              score: w.score,
+              timestamp: w.created_at,
+              elapsedAt: w.elapsed_at ?? undefined
+            }));
+            setWords(Array.from(uniqueWords.values()));
+          })
+          .catch((error) => console.error("Failed to load words:", error));
 
         // Fetch streak (direct query, no API round-trip)
-        supabase
-          .from("daily_boards")
-          .select("board_date")
-          .eq("user_id", data.user.id)
-          .gte("elapsed_seconds", DEFAULT_TIME_LIMIT_SECONDS)
-          .order("board_date", { ascending: false })
-          .then(({ data: completedDays }) => {
-            if (!completedDays?.length) return;
-            const completedSet = new Set(completedDays.map((d: { board_date: string }) => d.board_date));
+        getDocs(query(collection(db, COLLECTIONS.dailyBoards), where("user_id", "==", user.uid)))
+          .then((snapshot) => {
+            const completedDays = snapshot.docs
+              .map((d) => d.data() as DailyBoardDoc)
+              .filter((d) => d.elapsed_seconds >= DEFAULT_TIME_LIMIT_SECONDS);
+            if (!completedDays.length) return;
+            const completedSet = new Set(completedDays.map((d) => d.board_date));
             let count = 0;
             const cur = new Date(boardDate + "T12:00:00Z");
             // Start from today or yesterday
@@ -158,16 +179,13 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
               }
             }
             setStreak(count);
-          });
+          })
+          .catch((error) => console.error("Failed to load streak:", error));
 
         // Fetch board state (elapsed_seconds + time_limit_seconds)
-        supabase
-          .from("daily_boards")
-          .select("board_started, elapsed_seconds, time_limit_seconds")
-          .eq("user_id", data.user.id)
-          .eq("board_date", boardDate)
-          .single()
-          .then(({ data: boardData }) => {
+        getDoc(doc(db, COLLECTIONS.dailyBoards, dailyBoardDocId(user.uid, boardDate)))
+          .then((snapshot) => {
+            const boardData = snapshot.exists() ? (snapshot.data() as DailyBoardDoc) : null;
             if (boardData?.board_started) {
               const elapsed = boardData.elapsed_seconds ?? 0;
               const limit = boardData.time_limit_seconds ?? DEFAULT_TIME_LIMIT_SECONDS;
@@ -185,7 +203,8 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
                 setIsPaused(true);
               }
             }
-          });
+          })
+          .catch((error) => console.error("Failed to load board state:", error));
       }
     });
   }, [boardDate]);
@@ -334,18 +353,23 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
 
   // Start the game for the first time
   const handleStart = useCallback(async () => {
-    const now = new Date().toISOString();
     if (userIdRef.current) {
-      await supabase.from("daily_boards").upsert(
-        {
-          user_id: userIdRef.current,
-          board_date: boardDate,
-          board_started: now,
-          elapsed_seconds: 0,
-          time_limit_seconds: DEFAULT_TIME_LIMIT_SECONDS,
-        },
-        { onConflict: "user_id, board_date", ignoreDuplicates: true }
-      );
+      // Insert-if-absent (the former upsert with ignoreDuplicates)
+      const ref = doc(db, COLLECTIONS.dailyBoards, dailyBoardDocId(userIdRef.current, boardDate));
+      try {
+        const existing = await getDoc(ref);
+        if (!existing.exists()) {
+          await setDoc(ref, {
+            user_id: userIdRef.current,
+            board_date: boardDate,
+            board_started: serverTimestamp(),
+            elapsed_seconds: 0,
+            time_limit_seconds: DEFAULT_TIME_LIMIT_SECONDS,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to start board:", error);
+      }
     }
     elapsedBaseRef.current = 0;
     timeLimitRef.current = DEFAULT_TIME_LIMIT_SECONDS;
@@ -385,12 +409,11 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
     setShowTimeUpModal(false);
 
     if (userIdRef.current) {
-      const { error } = await supabase
-        .from("daily_boards")
-        .update({ time_limit_seconds: newLimit })
-        .eq("user_id", userIdRef.current)
-        .eq("board_date", boardDate);
-      if (error) {
+      try {
+        await updateDoc(doc(db, COLLECTIONS.dailyBoards, dailyBoardDocId(userIdRef.current, boardDate)), {
+          time_limit_seconds: newLimit,
+        });
+      } catch (error) {
         console.error("Failed to persist time extension:", error);
       }
     }
@@ -557,15 +580,18 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
 
     // Persist
     if (userIdRef.current) {
-      const { error } = await supabase.from("words").insert({
-        user_id: userIdRef.current,
-        board_date: boardDate,
-        word,
-        score,
-        elapsed_at: Math.floor(currentElapsed),
-      });
-
-      if (error) {
+      try {
+        // Deterministic ID: a duplicate insert is rejected by firestore.rules
+        await setDoc(doc(db, COLLECTIONS.words, wordDocId(userIdRef.current, boardDate, word)), {
+          id: crypto.randomUUID(),
+          user_id: userIdRef.current,
+          board_date: boardDate,
+          word,
+          score,
+          created_at: serverTimestamp(),
+          elapsed_at: Math.floor(currentElapsed),
+        });
+      } catch (error) {
         console.error("Failed to save word:", error);
         toast.error("Failed to save word");
         setWords(prev => prev.filter(w => w.word !== word));
@@ -577,7 +603,7 @@ export function WordGrid({ board, boardDate, wordLengthCounts }: WordGridProps) 
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut(auth);
     window.location.href = '/';
   };
 

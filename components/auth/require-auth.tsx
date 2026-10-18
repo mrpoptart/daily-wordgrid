@@ -2,7 +2,7 @@
 
 import { useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { getCurrentUser } from "@/lib/firebase";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -12,11 +12,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const user = await getCurrentUser();
 
-        if (!session) {
+        if (!user) {
           router.replace("/");
         } else {
           setIsAuthenticated(true);

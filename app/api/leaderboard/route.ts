@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
-import { resolveBoardDate } from "@/lib/board/api-helpers";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 50;
@@ -27,74 +25,7 @@ function resolveLimit(raw: string | null | undefined): number | "invalid" {
   return parsed;
 }
 
-function parseWordsField(value: unknown): string[] {
-  if (typeof value !== "string") {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    const words: string[] = [];
-    for (const item of parsed) {
-      if (typeof item === "string") {
-        const trimmed = item.trim();
-        if (trimmed.length > 0) {
-          words.push(trimmed);
-        }
-      }
-    }
-    return words;
-  } catch {
-    return [];
-  }
-}
-
-function formatSubmittedAt(value: unknown): string | null {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  if (typeof value === "string") {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString();
-    }
-  }
-
-  return null;
-}
-
-function normalizeUserId(value: unknown): string {
-  if (typeof value !== "string") {
-    return "unknown";
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : "unknown";
-}
-
-function normalizeScore(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.max(0, Math.floor(value));
-  }
-
-  const coerced = Number(value);
-  if (!Number.isFinite(coerced)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.floor(coerced));
-}
-
-type LeaderboardError = "invalid-limit" | "database-error";
+type LeaderboardError = "invalid-limit" | "unavailable";
 
 export type LeaderboardErrorResponse = {
   status: "error";
@@ -124,64 +55,15 @@ function errorResponse(error: LeaderboardError, status: number) {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const dateParam = url.searchParams.get("date");
   const limitParam = url.searchParams.get("limit");
 
-  // Ignore timezone params and headers
-  const date = resolveBoardDate(dateParam);
   const limit = resolveLimit(limitParam);
 
   if (limit === "invalid") {
     return errorResponse("invalid-limit", 400);
   }
 
-  try {
-    // Fetch submissions for the date
-    // Sort by score (desc), created_at (asc)
-    const { data: rows, count, error } = await supabaseAdmin
-        .from('submissions')
-        .select('*', { count: 'exact' })
-        .eq('date', date)
-        .order('score', { ascending: false })
-        .order('created_at', { ascending: true })
-        .limit(limit);
-
-    if (error) {
-        throw error;
-    }
-
-    const totalPlayers = count ?? 0;
-
-    let lastRank = 0;
-    let lastScore: number | null = null;
-
-    const entries: LeaderboardEntry[] = (rows || []).map((row, index) => {
-      const normalizedScore = normalizeScore(row.score);
-
-      const rank = lastScore !== null && normalizedScore === lastScore ? lastRank : index + 1;
-      lastScore = normalizedScore;
-      lastRank = rank;
-
-      return {
-        rank,
-        userId: normalizeUserId(row.user_id),
-        score: normalizedScore,
-        words: parseWordsField(row.words),
-        submittedAt: formatSubmittedAt(row.created_at),
-      };
-    });
-
-    const body: LeaderboardResponse = {
-      status: "ok",
-      date,
-      limit,
-      totalPlayers,
-      entries,
-    };
-
-    return NextResponse.json(body, { status: 200 });
-  } catch (error) {
-    console.error("Failed to fetch leaderboard", error);
-    return errorResponse("database-error", 500);
-  }
+  // No score store exists yet (scores were never persisted under Supabase either),
+  // so the leaderboard reports itself unavailable rather than an empty board.
+  return errorResponse("unavailable", 503);
 }

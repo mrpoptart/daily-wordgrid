@@ -1,85 +1,60 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { GET, HealthResponse } from '@/app/api/health/route';
 
-const selectMock = vi.fn();
-
-// Mock Supabase
-vi.mock('@/lib/supabase-admin', () => ({
-  supabaseAdmin: {
-    from: vi.fn().mockReturnValue({
-      select: (...args: unknown[]) => selectMock(...args),
-    }),
-  },
-}));
+const fetchMock = vi.fn();
 
 describe('Health API', () => {
-  const oldSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
   beforeEach(() => {
-    selectMock.mockReset();
-    selectMock.mockResolvedValue({ error: null });
-    process.env.NEXT_PUBLIC_SUPABASE_URL = oldSupabaseUrl;
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
   });
 
-  test('returns status ok and environment flags', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('reports ok when Firestore answers (a rules denial still proves reachability)', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 403 }));
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
     expect(response.status).toBe(200);
     expect(json.status).toBe('ok');
-    expect(json.env.hasSupabaseUrl).toBe(true);
-    expect(json.env.supabaseHost).toBe('example.supabase.co');
-    expect(json.env.supabaseHealth).toBe(true);
-    expect(json.env.supabaseError).toBeNull();
+    expect(json.env.firebaseProjectId).toBe('boggle-me');
+    expect(json.env.firebaseHealth).toBe(true);
+    expect(json.env.firebaseError).toBeNull();
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/projects/boggle-me/databases/(default)/documents/');
   });
 
-  test('handles missing Supabase URL', async () => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-    const response = await GET();
-    const json = (await response.json()) as HealthResponse;
-
-    expect(json.env.hasSupabaseUrl).toBe(false);
-    expect(json.env.supabaseHost).toBeNull();
-  });
-
-  test('reports degraded status with the Supabase error when the query fails', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  test('reports degraded status when Firestore returns a server error', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    selectMock.mockResolvedValue({
-      error: {
-        message: 'TypeError: fetch failed',
-        details: 'Caused by: Error: getaddrinfo ENOTFOUND example.supabase.co',
-        hint: '',
-        code: '',
-      },
-    });
+    fetchMock.mockResolvedValue(new Response('', { status: 503 }));
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
     expect(response.status).toBe(200);
     expect(json.status).toBe('degraded');
-    expect(json.env.supabaseHealth).toBe(false);
-    expect(json.env.supabaseError).toContain('fetch failed');
-    expect(json.env.supabaseError).toContain('ENOTFOUND example.supabase.co');
+    expect(json.env.firebaseHealth).toBe(false);
+    expect(json.env.firebaseError).toBe('Firestore responded 503');
 
     consoleError.mockRestore();
   });
 
-  test('reports degraded status when the Supabase client throws', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  test('reports degraded status with the network error when Firestore is unreachable', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    selectMock.mockRejectedValue(new Error('connection refused'));
+    fetchMock.mockRejectedValue(
+      new TypeError('fetch failed', { cause: new Error('getaddrinfo ENOTFOUND firestore.googleapis.com') }),
+    );
 
     const response = await GET();
     const json = (await response.json()) as HealthResponse;
 
     expect(json.status).toBe('degraded');
-    expect(json.env.supabaseHealth).toBe(false);
-    expect(json.env.supabaseError).toBe('connection refused');
+    expect(json.env.firebaseHealth).toBe(false);
+    expect(json.env.firebaseError).toContain('fetch failed');
+    expect(json.env.firebaseError).toContain('ENOTFOUND firestore.googleapis.com');
 
     consoleError.mockRestore();
   });

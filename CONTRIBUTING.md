@@ -19,18 +19,20 @@ Thanks for helping build Daily Word Grid! Please follow these guidelines so we c
 - Frontend/UI: Next.js (React, TypeScript)
 - Server: Next.js API routes or Server Actions (edge/serverless on Vercel)
 - Shared types/validation via Zod (planned)
-- Database via Supabase Postgres with ORM (planned)
+- Database: Cloud Firestore; auth: Firebase Auth (Google + email link)
 
 ## Local Dev
 ```bash
 npm install
-npm run dev
+npm run emulators   # Firebase Auth + Firestore emulators (needs Java)
+NEXT_PUBLIC_FIREBASE_EMULATOR=1 npm run dev
 ```
 
 ## Quality Gates
 - Lint: `npm run lint` (no warnings allowed) — must be clean before commit/PR
 - Typecheck: `npm run typecheck`
 - Tests: `npm test`
+- Security rules: `npm run test:emulator` (when touching `firestore.rules`)
 
 CI will block merges if any gate fails.
 
@@ -39,9 +41,6 @@ CI will block merges if any gate fails.
 - Use `.env.local` for local dev; do not commit it
 - Configure environment variables in Vercel project settings for deploys
 - Required variables (examples):
-  - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY` (server-only if needed)
-  - `DATABASE_URL` (server-only)
   - `BOARD_DAILY_SALT` (server-only, used for deterministic boards)
 
 ## Commit & PR
