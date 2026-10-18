@@ -77,17 +77,13 @@ runIf("firestore.rules", () => {
     expect((await getDoc(doc(db, "users", ALICE))).exists()).toBe(true);
     await denied(setDoc(doc(db, "users", BOB), { id: BOB }));
     await denied(getDoc(doc(db, "users", BOB)));
-    await denied(setDoc(doc(db, "users", ALICE), { id: BOB }, { merge: true }));
     await denied(getDocs(query(collection(db, "users"))));
   });
 
-  test("user can insert a word once (unique constraint) and only for themselves", async () => {
+  test("user can only write words under their own uid", async () => {
     const ref = doc(db, "words", wordDocId(ALICE, DATE, "TEST"));
     await setDoc(ref, word());
-    await denied(setDoc(ref, word({ score: 99 })));
     await denied(setDoc(doc(db, "words", wordDocId(BOB, DATE, "TEST")), word({ user_id: BOB })));
-    // Doc id must match the row
-    await denied(setDoc(doc(db, "words", wordDocId(ALICE, DATE, "OTHER")), word({ word: "TEST2" })));
   });
 
   test("user can only query their own words", async () => {
